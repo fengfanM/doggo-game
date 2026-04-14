@@ -304,7 +304,69 @@ npm run build:weapp
 
 ---
 
+## 🤖 自动化脚本
+
+### 本地自动提交推送
+
+使用自动提交脚本，一键完成 git add → commit → push：
+
+```bash
+# 方式1：使用 npm 脚本
+npm run auto-commit "你的提交信息"
+
+# 方式2：直接运行脚本
+./scripts/auto-commit.sh "你的提交信息"
+
+# 方式3：不带提交信息（使用默认信息）
+npm run auto-commit
+```
+
+**脚本功能**：
+- ✅ 自动检查 git 状态
+- ✅ 自动添加所有修改的文件
+- ✅ 自动创建提交
+- ✅ 自动拉取最新代码（避免冲突）
+- ✅ 自动推送到远程仓库
+- 🎨 漂亮的彩色输出
+
+---
+
+## 🔄 CI/CD 流程
+
+项目已配置 GitHub Actions CI/CD 流程，每次推送代码或创建 Pull Request 时会自动运行：
+
+### CI/CD 任务列表
+| 步骤 | 说明 |
+|------|------|
+| 📥 Checkout code | 检出代码 |
+| 🟢 Setup Node.js | 设置 Node.js 环境 |
+| 📦 Install dependencies | 安装依赖 |
+| 🔍 TypeScript type check | TypeScript 类型检查 |
+| 📝 ESLint check | 代码风格检查 |
+| 🔨 Build project | 构建项目 |
+| ✅ Upload build artifacts | 上传构建产物 |
+
+### 查看 CI/CD 结果
+访问：https://github.com/fengfanM/doggo-game/actions
+
+---
+
 ## 💻 开发指南
+
+### 代码检查与格式化
+```bash
+# TypeScript 类型检查
+npm run typecheck
+
+# ESLint 代码检查
+npm run lint
+
+# ESLint 自动修复
+npm run lint:fix
+
+# 运行测试
+npm run test
+```
 
 ### 添加新关卡
 修改 `src/data/levels.ts`：
