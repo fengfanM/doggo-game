@@ -348,16 +348,22 @@ function startGame(lvl = 1) {
 }
 
 function render() {
+  console.log('=== render 被调用 ===');
+  console.log('gameState.showStartScreen:', gameState.showStartScreen);
+  console.log('gameState.cards 数量:', gameState.cards ? gameState.cards.length : 0);
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = '#FEF3E2';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (gameState.showStartScreen) {
+    console.log('渲染开始页面');
     renderStartScreen();
     return;
   }
 
+  console.log('渲染游戏页面');
   renderGameScreen();
 }
 
@@ -1019,5 +1025,13 @@ function handleLoseConfirm() {
   startGame(gameState.currentLevel);
   gameState.failCount = newFailCount;
 }
+
+console.log('=== 小游戏启动 ===');
+console.log('Canvas 宽高:', canvas.width, 'x', canvas.height);
+console.log('System info:', systemInfo);
+
+ctx.fillStyle = 'red';
+ctx.fillRect(0, 0, 100, 100);
+console.log('已绘制测试红色方块');
 
 initGame(1);
