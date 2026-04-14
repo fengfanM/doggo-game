@@ -1,0 +1,53 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # 每周一运行
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  dependency-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔄 Update dependencies
+        run: npm update
+
+      - name: 📝 Check for changes
+        id: check_changes
+        run: |
+          if git diff --name-only | grep -E 'package\.json|package-lock\.json'; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📤 Create Pull Request
+        if: steps.check_changes.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            This PR updates all dependencies to their latest versions.
+            
+            ## Changes
+            - Updated dependencies
+            - Updated package-lock.json
+          branch: dependency-updates
+          delete-branch: true
+          labels: |
+            dependencies
+            automated

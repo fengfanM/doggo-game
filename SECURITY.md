@@ -20,7 +20,7 @@
 1. **不要**公开报告漏洞（不要创建公开的 Issue）
 2. 通过以下方式之一联系我们：
    - GitHub Security Advisory（推荐）
-   - 发送邮件到：[你的邮箱地址]
+   - 发送邮件到：fengfanM@example.com
 
 ### 📋 报告内容
 

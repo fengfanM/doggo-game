@@ -1,0 +1,54 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # 每周日运行
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔒 NPM audit
+        run: npm audit --audit-level=high
+
+      - name: 🔍 Dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'Doggo Game'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+          args: '--failOnCVSS 7'
+
+      - name: 🛡️ Code scanning
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript
+
+      - name: 🔬 Run CodeQL
+        uses: github/codeql-action/analyze@v2
+
+      - name: ✅ Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            reports/
+            codeql-results/

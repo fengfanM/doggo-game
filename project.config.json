@@ -50,8 +50,8 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "2.19.4",
-  "appid": "wxff7df97464c54b28",
+  "libVersion": "3.15.2",
+  "appid": "wx743db6b87fe9a8fe",
   "projectname": "狗了个狗",
   "isGameTourist": false,
   "condition": {},

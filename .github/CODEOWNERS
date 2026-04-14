@@ -1,0 +1,17 @@
+# CODEOWNERS
+# This file defines the code owners for different parts of the project.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for all files
+*       @fengfanM
+
+# Specific directory owners
+/src/           @fengfanM
+/scripts/       @fengfanM
+/docs/          @fengfanM
+/examples/      @fengfanM
+
+# Specific file owners
+/package.json   @fengfanM
+/README.md      @fengfanM
+/CHANGELOG.md   @fengfanM
