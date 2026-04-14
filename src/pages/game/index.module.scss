@@ -1,0 +1,304 @@
+.container {
+  height: 100vh;
+  background: linear-gradient(180deg, #FFF8E7 0%, #FFE4B5 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.startScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #FFF8E7 0%, #FFE4B5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.startContent {
+  text-align: center;
+  padding: 0 32rpx;
+}
+
+.startLogo {
+  margin-bottom: 48rpx;
+}
+
+.logoEmoji {
+  font-size: 160rpx;
+  line-height: 1;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.logoTitle {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #FF9A3C;
+}
+
+.gameStats {
+  display: flex;
+  gap: 32rpx;
+  justify-content: center;
+  margin-bottom: 32rpx;
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.75);
+  padding: 24rpx 32rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  min-width: 120rpx;
+  text-align: center;
+}
+
+.statCard .statValue {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #FF9A3C;
+  display: block;
+  line-height: 1.2;
+}
+
+.statCard .statLabel {
+  font-size: 24rpx;
+  color: #6B5B4F;
+  display: block;
+  margin-top: 4rpx;
+}
+
+.startDescription {
+  margin-bottom: 32rpx;
+}
+
+.descText {
+  font-size: 28rpx;
+  color: #6B5B4F;
+  line-height: 1.8;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.startTips {
+  margin-bottom: 48rpx;
+}
+
+.tipItem {
+  font-size: 24rpx;
+  color: #6B5B4F;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.startButton {
+  width: 400rpx;
+  height: 100rpx;
+  background: linear-gradient(135deg, #FF9A3C 0%, #FFB86C 100%);
+  border-radius: 20rpx;
+  color: white;
+  font-size: 32rpx;
+  font-weight: 700;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.header {
+  padding: 16rpx 32rpx;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #FF9A3C;
+  flex: 1;
+  text-align: center;
+}
+
+.pauseButton {
+  width: 56rpx;
+  height: 56rpx;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #E8D4C4;
+  flex-shrink: 0;
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statLabel {
+  font-size: 22rpx;
+  color: #6B5B4F;
+  margin-bottom: 2rpx;
+  display: block;
+}
+
+.statValue {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2C1810;
+}
+
+.content {
+  padding: 0 32rpx;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gameArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 8rpx;
+  padding: 8rpx 32rpx 16rpx;
+  flex-shrink: 0;
+}
+
+.button {
+  flex: 1;
+  height: 64rpx;
+  background: linear-gradient(135deg, #FF9A3C 0%, #FFB86C 100%);
+  border-radius: 48rpx;
+  color: white;
+  font-size: 24rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 16rpx rgba(255,154,60,0.3);
+
+  &.secondary {
+    background: white;
+    color: #2C1810;
+    border: 2rpx solid #E8D4C4;
+    box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.08);
+  }
+
+  &.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+}
+
+.pauseOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.pauseModal {
+  background: white;
+  border-radius: 20rpx;
+  padding: 48rpx;
+  text-align: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.pauseTitle {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #2C1810;
+  margin-bottom: 32rpx;
+}
+
+.modalOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.loseModal,
+.winModal {
+  background: white;
+  border-radius: 20rpx;
+  padding: 48rpx;
+  text-align: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+  min-width: 500rpx;
+}
+
+.modalTitle {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #2C1810;
+  margin-bottom: 16rpx;
+}
+
+.winStats {
+  display: flex;
+  justify-content: center;
+  gap: 32rpx;
+  margin-bottom: 24rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFE4B5 100%);
+  border-radius: 16rpx;
+}
+
+.winStat {
+  text-align: center;
+}
+
+.winStatLabel {
+  font-size: 22rpx;
+  color: #6B5B4F;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.winStatValue {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #FF9A3C;
+}
+
+.modalDesc {
+  font-size: 28rpx;
+  color: #6B5B4F;
+  margin-bottom: 32rpx;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 16rpx;
+}

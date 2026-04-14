@@ -1,0 +1,461 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FFF8E7 0%, #FFE4B5 100%);
+  padding: $spacing-lg $page-padding;
+}
+
+.profile {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  text-align: center;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-lg;
+}
+
+.avatar {
+  width: 160rpx;
+  height: 160rpx;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 80rpx;
+  margin: 0 auto $spacing-md;
+}
+
+.nickname {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.signature {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.achievementCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-lg;
+}
+
+.achievementHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.achievementTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.dogKingBadge {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-round;
+  box-shadow: 0 4rpx 12rpx rgba(255, 165, 0, 0.3);
+}
+
+.dogKingText {
+  color: white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+}
+
+.achievementDesc {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-lg;
+  display: block;
+}
+
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-lg;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 16rpx;
+  background: #E8D4C4;
+  border-radius: $radius-round;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, $color-primary 0%, #FFB347 100%);
+  border-radius: $radius-round;
+  transition: width 0.5s ease;
+}
+
+.progressText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  min-width: 80rpx;
+  text-align: right;
+}
+
+.levelChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.checkItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  background: #FFF8E7;
+  opacity: 0.6;
+
+  &.checked {
+    opacity: 1;
+    background: linear-gradient(135deg, rgba(82, 196, 26, 0.1) 0%, rgba(82, 196, 26, 0.05) 100%);
+  }
+}
+
+.checkIcon {
+  font-size: 32rpx;
+  color: $color-text-secondary;
+  width: 40rpx;
+  text-align: center;
+
+  .checked & {
+    color: $color-success;
+    font-weight: bold;
+  }
+}
+
+.checkText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+
+  .checked & {
+    color: $color-text-primary;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.bestTime {
+  margin-left: auto;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.statsCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-lg;
+}
+
+.cardTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-lg;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-lg;
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statValue {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.statLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.menuList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.menuItem {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.menuLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.menuIcon {
+  font-size: 40rpx;
+}
+
+.menuText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.menuArrow {
+  font-size: 32rpx;
+  color: $color-text-tertiary;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 40rpx;
+}
+
+.modal {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: $shadow-popup;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg $spacing-xl;
+  border-bottom: 1px solid $color-divider;
+}
+
+.modalTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.modalClose {
+  font-size: 48rpx;
+  color: $color-text-secondary;
+  line-height: 1;
+  padding: 8rpx;
+}
+
+.modalContent {
+  flex: 1;
+  padding: $spacing-xl;
+  overflow-y: auto;
+}
+
+.detailStats {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+.detailItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFE4B5 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+}
+
+.detailIcon {
+  font-size: 64rpx;
+}
+
+.detailInfo {
+  flex: 1;
+}
+
+.detailLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: 4rpx;
+}
+
+.detailValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+}
+
+.guideSection {
+  margin-bottom: $spacing-xl;
+}
+
+.guideTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.guideText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  line-height: 1.6;
+}
+
+.guideStep {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.guideStepNum {
+  font-size: 40rpx;
+  min-width: 48rpx;
+}
+
+.guideStepText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  flex: 1;
+}
+
+.guideTool {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+  background: #FFF8E7;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+}
+
+.guideToolIcon {
+  font-size: 48rpx;
+  min-width: 56rpx;
+}
+
+.guideToolInfo {
+  flex: 1;
+}
+
+.guideToolName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.guideToolDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.guideTip {
+  margin-bottom: $spacing-sm;
+}
+
+.guideTipText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  line-height: 1.6;
+}
+
+.settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.settingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFE4B5 100%);
+  border-radius: $radius-lg;
+}
+
+.settingLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.settingIcon {
+  font-size: 48rpx;
+}
+
+.settingText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.switch {
+  width: 100rpx;
+  height: 56rpx;
+  background: #C4B5A5;
+  border-radius: 56rpx;
+  padding: 4rpx;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &.on {
+    background: linear-gradient(135deg, #FF9A3C 0%, #FFB86C 100%);
+  }
+}
+
+.switchDot {
+  width: 48rpx;
+  height: 48rpx;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  transform: translateX(0);
+
+  .on & {
+    transform: translateX(44rpx);
+  }
+}

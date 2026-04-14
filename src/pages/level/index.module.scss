@@ -1,0 +1,280 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FFF8E7 0%, #FFE4B5 100%);
+  padding: $spacing-lg $page-padding;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: $spacing-xl;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.subtitle {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.levelList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.levelCard {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+  position: relative;
+  overflow: hidden;
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.locked {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &.completed {
+    border: 3rpx solid $color-success;
+  }
+}
+
+.levelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.levelTitleRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.levelIcon {
+  font-size: 48rpx;
+}
+
+.levelName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.difficulty {
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  &.easy {
+    background: rgba(82, 196, 26, 0.1);
+    color: $color-success;
+  }
+
+  &.medium {
+    background: rgba(250, 173, 20, 0.1);
+    color: $color-warning;
+  }
+
+  &.hard {
+    background: rgba(255, 77, 79, 0.1);
+    color: $color-error;
+  }
+}
+
+.levelInfo {
+  display: flex;
+  gap: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoLabel {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-xs;
+}
+
+.infoValue {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.levelDescription {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-loose;
+}
+
+.completedBadge {
+  position: absolute;
+  top: $spacing-md;
+  right: $spacing-md;
+  background: linear-gradient(135deg, $color-success 0%, #4CAF50 100%);
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-round;
+}
+
+.completedText {
+  color: white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.lockedBadge {
+  position: absolute;
+  top: $spacing-md;
+  right: $spacing-md;
+  background: linear-gradient(135deg, #9E9E9E 0%, #757575 100%);
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-round;
+}
+
+.lockedText {
+  color: white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 40rpx;
+}
+
+.modal {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  width: 100%;
+  max-width: 560rpx;
+  box-shadow: $shadow-popup;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg $spacing-xl;
+  border-bottom: 1px solid $color-divider;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.modalClose {
+  font-size: 48rpx;
+  color: $color-text-secondary;
+  line-height: 1;
+  padding: 8rpx;
+}
+
+.modalContent {
+  padding: $spacing-xl;
+  text-align: center;
+}
+
+.lockedEmoji {
+  font-size: 120rpx;
+  margin-bottom: $spacing-lg;
+  display: block;
+}
+
+.lockedLevelName {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.lockedDesc {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-lg;
+  display: block;
+}
+
+.requirementBox {
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFE4B5 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  text-align: left;
+}
+
+.requirementTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.requirementItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.requirementIcon {
+  font-size: 40rpx;
+}
+
+.requirementText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.tipText {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  display: block;
+}
+
+.modalFooter {
+  padding: $spacing-lg $spacing-xl;
+  border-top: 1px solid $color-divider;
+}
+
+.confirmButton {
+  display: block;
+  text-align: center;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  padding: $spacing-md;
+  border-radius: $radius-lg;
+  background: linear-gradient(135deg, $color-primary-light 0%, #FFE4B5 100%);
+}

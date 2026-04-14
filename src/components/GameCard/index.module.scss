@@ -1,0 +1,76 @@
+.card {
+  position: absolute;
+  width: 90rpx;
+  height: 90rpx;
+  background: linear-gradient(145deg, #FFF8E7 0%, #FFE4B5 100%);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.12), 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
+  border: 4rpx solid #E8D4C4;
+  transition: all 0.1s ease-out;
+  z-index: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &:not(.cover):active {
+    transform: scale(0.95);
+  }
+
+  &.cover {
+    opacity: 0.7;
+    filter: grayscale(30%) brightness(0.9);
+    cursor: not-allowed;
+    pointer-events: none;
+    box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
+    border: 4rpx solid #C4B5A5;
+  }
+
+  &.small {
+    width: 70rpx;
+    height: 70rpx;
+    font-size: 36rpx;
+    border-radius: 12rpx;
+    box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.1);
+    border-width: 2rpx;
+    position: relative;
+  }
+
+  &.clicked {
+    animation: cardClick 0.15s ease-out;
+  }
+
+  &.eliminated {
+    animation: cardEliminate 0.3s ease-out forwards;
+  }
+}
+
+@keyframes cardClick {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cardEliminate {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
