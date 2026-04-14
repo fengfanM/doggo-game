@@ -159,8 +159,8 @@ function generateCards(level) {
   }
 
   let zIndex = 0;
-  const centerX = Math.min(180, systemInfo.windowWidth / 2);
-  const centerY = Math.min(230, systemInfo.windowHeight / 2);
+  const centerX = 180;
+  const centerY = 200;
 
   for (let layer = 0; layer < config.layers; layer++) {
     const layerData = layerCards[layer];
@@ -245,8 +245,8 @@ function washCards(level, cards) {
   const shuffled = fastShuffle(updateCards);
 
   const config = levelConfig[Math.min(level - 1, levelConfig.length - 1)];
-  const centerX = Math.min(180, systemInfo.windowWidth / 2);
-  const centerY = Math.min(230, systemInfo.windowHeight / 2);
+  const centerX = 180;
+  const centerY = 200;
 
   const cols = Math.ceil(Math.sqrt(shuffled.length * 1.5));
   const rows = Math.ceil(shuffled.length / cols);
