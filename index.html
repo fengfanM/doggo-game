@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐕 狗了个狗 - 网页版</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>🐕 狗了个狗</h1>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">关卡</span>
+                    <span class="stat-value" id="currentLevel">1</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">分数</span>
+                    <span class="stat-value" id="score">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">时间</span>
+                    <span class="stat-value" id="timer">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="slot-container" id="slotContainer">
+            <div class="slot-label">卡片槽</div>
+            <div class="slot-cards" id="slotCards"></div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn" id="undoBtn" disabled>
+                🔄 撤回 (<span id="undoCount">3</span>)
+            </button>
+            <button class="action-btn" id="shuffleBtn" disabled>
+                🔀 洗牌 (<span id="shuffleCount">2</span>)
+            </button>
+            <button class="action-btn primary" id="restartBtn">
+                🔁 重新开始
+            </button>
+        </div>
+
+        <div class="level-selector">
+            <span>选择关卡：</span>
+            <button class="level-btn" data-level="1">1</button>
+            <button class="level-btn" data-level="2">2</button>
+            <button class="level-btn" data-level="3">3</button>
+            <button class="level-btn" data-level="4">4</button>
+        </div>
+    </div>
+
+    <div class="modal" id="winModal" style="display: none;">
+        <div class="modal-content">
+            <h2>🎉 恭喜通关！</h2>
+            <p>得分：<span id="winScore">0</span></p>
+            <p>用时：<span id="winTime">00:00</span></p>
+            <button class="modal-btn" onclick="nextLevel()">下一关</button>
+            <button class="modal-btn" onclick="restartGame()">重新开始</button>
+        </div>
+    </div>
+
+    <div class="modal" id="loseModal" style="display: none;">
+        <div class="modal-content">
+            <h2>💔 游戏结束</h2>
+            <p>卡片槽已满！</p>
+            <button class="modal-btn" onclick="restartGame()">重新开始</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
