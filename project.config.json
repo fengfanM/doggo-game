@@ -54,6 +54,7 @@
   "appid": "wx743db6b87fe9a8fe",
   "projectname": "狗了个狗",
   "isGameTourist": false,
+  "isGame": false,
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",

@@ -17,9 +17,9 @@ export const DOG_EMOJIS = [
 
 const levelConfig = [
   { types: 3, cardsPerType: 6, layers: 2, layerOffset: 15 },
-  { types: 5, cardsPerType: 6, layers: 3, layerOffset: 18 },
+  { types: 5, cardsPerType: 9, layers: 3, layerOffset: 18 },
   { types: 7, cardsPerType: 9, layers: 4, layerOffset: 22 },
-  { types: 12, cardsPerType: 15, layers: 8, layerOffset: 35 },
+  { types: 10, cardsPerType: 9, layers: 6, layerOffset: 28 },
 ];
 
 export const LEVELS: Level[] = [
@@ -51,8 +51,8 @@ export const LEVELS: Level[] = [
     id: 4,
     name: '狗王挑战',
     difficulty: 'hard',
-    cardTypes: ['🐕', '🐶', '🐩', '🦮', '🐕‍🦺', '🐾', '🦴', '🎾', '🏆', '⭐', '🥎', '🎯'],
+    cardTypes: ['🐕', '🐶', '🐩', '🦮', '🐕‍🦺', '🐾', '🦴', '🎾', '🏆', '⭐'],
     cardCount: levelConfig[3].types * levelConfig[3].cardsPerType,
-    description: '终极变态难度！通关率<5%'
-  }
+    description: '终极挑战！通关率<10%'
+  },
 ];

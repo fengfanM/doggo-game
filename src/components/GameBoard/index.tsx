@@ -14,7 +14,7 @@ interface GameBoardProps {
 const GameBoard: React.FC<GameBoardProps> = ({ cards, queue, sortedQueue, onCardClick }) => {
   return (
     <View className={styles.board}>
-      {cards.map((card, index) => {
+      {cards.map((card) => {
         if (card.status !== 0) {
           return null;
         }
@@ -29,7 +29,7 @@ const GameBoard: React.FC<GameBoardProps> = ({ cards, queue, sortedQueue, onCard
             onClick={onCardClick}
             x={x}
             y={y}
-            zIndex={index}
+            zIndex={card.zIndex}
           />
         );
       })}

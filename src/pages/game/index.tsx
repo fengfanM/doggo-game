@@ -29,7 +29,7 @@ const Game: React.FC = () => {
   const [hasShared, setHasShared] = useState(false);
   const [gameStats, setGameStats] = useState(getGameStats());
   const [elapsedTime, setElapsedTime] = useState(0);
-  const lastStateRef = useRef<{ cards: Card[]; queue: Card[]; score: number } | null>(null);
+  const historyRef = useRef<Array<{ cards: Card[]; queue: Card[]; score: number }>>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const gameStateRef = useRef({
     gamePaused: false,
@@ -112,7 +112,7 @@ const Game: React.FC = () => {
     } catch (e) {
       console.error('清除分享状态失败:', e);
     }
-    lastStateRef.current = null;
+    historyRef.current = [];
     
     timerRef.current = setInterval(() => {
       const { gamePaused, showLoseModal, showWinModal, showStartScreen } = gameStateRef.current;
@@ -164,11 +164,15 @@ const Game: React.FC = () => {
     const card = cards[cardIndex];
     if (card.isCover || card.status !== 0) return;
 
-    lastStateRef.current = {
+    historyRef.current.push({
       cards: JSON.parse(JSON.stringify(cards)),
       queue: JSON.parse(JSON.stringify(queue)),
       score: score
-    };
+    });
+    
+    if (historyRef.current.length > 10) {
+      historyRef.current.shift();
+    }
 
     const updateScene = cards.slice();
     const symbol = updateScene[cardIndex];
@@ -177,22 +181,36 @@ const Game: React.FC = () => {
     let updateQueue = queue.slice();
     updateQueue.push(symbol);
     
-    let newScore = score + 1;
+    let newScore = score + 10;
     const checkedCards = checkCover(updateScene);
     setCards(checkedCards);
     setQueue(updateQueue);
     setScore(newScore);
 
-    const filterSame = updateQueue.filter(sb => sb.type === symbol.type);
-    if (filterSame.length === 3) {
-      updateQueue = updateQueue.filter(sb => sb.type !== symbol.type);
-      for (const sb of filterSame) {
-        const find = updateScene.find(i => i.id === sb.id);
-        if (find) {
-          find.status = 2;
-        }
-      }
-      newScore += 3;
+    const typeCounts: Record<string, number> = {};
+    updateQueue.forEach(card => {
+      typeCounts[card.type] = (typeCounts[card.type] || 0) + 1;
+    });
+    
+    const typesToRemove = Object.keys(typeCounts).filter(type => typeCounts[type] >= 3);
+    
+    if (typesToRemove.length > 0) {
+      typesToRemove.forEach(type => {
+        let removed = 0;
+        updateQueue = updateQueue.filter(card => {
+          if (card.type === type && removed < 3) {
+            removed++;
+            const find = updateScene.find(i => i.id === card.id);
+            if (find) {
+              find.status = 2;
+            }
+            return false;
+          }
+          return true;
+        });
+      });
+      
+      newScore += 100 * typesToRemove.length;
       setScore(newScore);
     }
 
@@ -230,12 +248,12 @@ const Game: React.FC = () => {
   };
 
   const handleUndo = () => {
-    if (gamePaused || !lastStateRef.current || undoCount <= 0) return;
-    setCards(lastStateRef.current.cards);
-    setQueue(lastStateRef.current.queue);
-    setScore(lastStateRef.current.score);
+    if (gamePaused || historyRef.current.length === 0 || undoCount <= 0) return;
+    const lastState = historyRef.current.pop()!;
+    setCards(lastState.cards);
+    setQueue(lastState.queue);
+    setScore(lastState.score);
     setUndoCount(c => c - 1);
-    lastStateRef.current = null;
   };
 
   const handleShuffle = () => {
@@ -311,7 +329,7 @@ const Game: React.FC = () => {
     setUndoCount(2);
     setShuffleCount(2);
     setElapsedTime(0);
-    lastStateRef.current = null;
+    historyRef.current = [];
     
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -368,8 +386,8 @@ const Game: React.FC = () => {
             </View>
 
             <View className={styles.startTips}>
-              <Text className={styles.tipItem}>🔄 每局有3次洗牌机会</Text>
-              <Text className={styles.tipItem}>↩️ 每局有3次撤回机会</Text>
+              <Text className={styles.tipItem}>🔄 每局有2次洗牌机会</Text>
+              <Text className={styles.tipItem}>↩️ 每局有2次撤回机会</Text>
             </View>
 
             <Button

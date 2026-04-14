@@ -42,9 +42,9 @@ export const timestampToUsedTimeString = (time: number): string => {
 
 const levelConfig = [
   { types: 3, cardsPerType: 6, layers: 2, layerOffset: 15 },
-  { types: 5, cardsPerType: 6, layers: 3, layerOffset: 18 },
+  { types: 5, cardsPerType: 9, layers: 3, layerOffset: 18 },
   { types: 7, cardsPerType: 9, layers: 4, layerOffset: 22 },
-  { types: 12, cardsPerType: 15, layers: 8, layerOffset: 35 },
+  { types: 10, cardsPerType: 9, layers: 6, layerOffset: 28 },
 ];
 
 export const generateCards = (level: number, cardTypes: string[]): Card[] => {
