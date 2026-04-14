@@ -30,57 +30,167 @@ const levelConfig = [
 ];
 
 const LEVELS = [
-  { id: 1, name: '新手试炼', difficulty: 'easy', description: '让你觉得你很行～' },
-  { id: 2, name: '初露锋芒', difficulty: 'easy', description: '难度逐渐增加' },
-  { id: 3, name: '极限挑战', difficulty: 'hard', description: '开始有挑战了！' },
-  { id: 4, name: '狗王挑战', difficulty: 'hard', description: '终极挑战！通关率<10%' },
+  { id: 1, name: '新手试炼', difficulty: 'easy', description: '让你觉得你很行～', cardTypes: DOG_EMOJIS.slice(0, 3), cardCount: 18 },
+  { id: 2, name: '初露锋芒', difficulty: 'easy', description: '难度逐渐增加', cardTypes: DOG_EMOJIS.slice(0, 5), cardCount: 45 },
+  { id: 3, name: '极限挑战', difficulty: 'hard', description: '开始有挑战了！', cardTypes: DOG_EMOJIS.slice(0, 7), cardCount: 63 },
+  { id: 4, name: '狗王挑战', difficulty: 'hard', description: '终极挑战！通关率<10%', cardTypes: DOG_EMOJIS.slice(0, 10), cardCount: 90 },
 ];
 
 const STATS_KEY = 'dog_game_stats';
 const SHARE_KEY = 'dog_game_shared';
+const LEVEL_PROGRESS_KEY = 'dog_game_level_progress';
+const SETTINGS_KEY = 'dog_game_settings';
+
+const DEFAULT_STATS = {
+  highScore: 0,
+  totalWins: 0,
+  longestWinStreak: 0,
+  currentWinStreak: 0,
+};
+
+const DEFAULT_LEVEL_PROGRESS = {
+  maxUnlockedLevel: 1,
+  completedLevels: [],
+  bestTimes: {},
+};
+
+const DEFAULT_SETTINGS = {
+  soundEnabled: true,
+  musicEnabled: true,
+};
+
+function getSettings() {
+  try {
+    const saved = wx.getStorageSync(SETTINGS_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to get settings:', e);
+  }
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(settings) {
+  try {
+    wx.setStorageSync(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save settings:', e);
+  }
+}
+
+function toggleSound() {
+  const settings = getSettings();
+  settings.soundEnabled = !settings.soundEnabled;
+  saveSettings(settings);
+  return settings;
+}
+
+function toggleMusic() {
+  const settings = getSettings();
+  settings.musicEnabled = !settings.musicEnabled;
+  saveSettings(settings);
+  return settings;
+}
 
 function getGameStats() {
   try {
-    return wx.getStorageSync(STATS_KEY) || {
-      highScore: 0,
-      totalWins: 0,
-      currentWinStreak: 0,
-      longestWinStreak: 0
-    };
+    const saved = wx.getStorageSync(STATS_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
   } catch (e) {
-    return {
-      highScore: 0,
-      totalWins: 0,
-      currentWinStreak: 0,
-      longestWinStreak: 0
-    };
+    console.error('Failed to get game stats:', e);
   }
+  return { ...DEFAULT_STATS };
 }
 
 function saveGameStats(stats) {
   try {
-    wx.setStorageSync(STATS_KEY, stats);
+    wx.setStorageSync(STATS_KEY, JSON.stringify(stats));
   } catch (e) {
-    console.error('保存游戏统计失败:', e);
+    console.error('Failed to save game stats:', e);
   }
 }
 
-function completeLevel(level, time) {
+function getLevelProgress() {
   try {
-    const key = `level_${level}_time`;
-    const current = wx.getStorageSync(key) || Infinity;
-    if (time < current) {
-      wx.setStorageSync(key, time);
+    const saved = wx.getStorageSync(LEVEL_PROGRESS_KEY);
+    if (saved) {
+      const progress = JSON.parse(saved);
+      
+      if (progress.maxUnlockedLevel > 4) {
+        progress.maxUnlockedLevel = 4;
+      }
+      
+      progress.completedLevels = progress.completedLevels.filter(l => l <= 4);
+      
+      const newBestTimes = {};
+      for (const key in progress.bestTimes) {
+        const level = parseInt(key);
+        if (level <= 4) {
+          newBestTimes[level] = progress.bestTimes[key];
+        }
+      }
+      progress.bestTimes = newBestTimes;
+      
+      return progress;
     }
   } catch (e) {
-    console.error('保存关卡记录失败:', e);
+    console.error('Failed to get level progress:', e);
   }
+  return { ...DEFAULT_LEVEL_PROGRESS };
+}
+
+function saveLevelProgress(progress) {
+  try {
+    wx.setStorageSync(LEVEL_PROGRESS_KEY, JSON.stringify(progress));
+  } catch (e) {
+    console.error('Failed to save level progress:', e);
+  }
+}
+
+function completeLevel(level, timeInSeconds) {
+  const progress = getLevelProgress();
+  
+  if (!progress.completedLevels.includes(level)) {
+    progress.completedLevels.push(level);
+  }
+  
+  if (level >= progress.maxUnlockedLevel) {
+    progress.maxUnlockedLevel = Math.min(level + 1, 4);
+  }
+  
+  if (timeInSeconds !== undefined) {
+    const currentBest = progress.bestTimes[level];
+    if (currentBest === undefined || timeInSeconds < currentBest) {
+      progress.bestTimes[level] = timeInSeconds;
+    }
+  }
+  
+  saveLevelProgress(progress);
+  return progress;
+}
+
+function getBestTime(level) {
+  const progress = getLevelProgress();
+  return progress.bestTimes[level];
+}
+
+function isLevelUnlocked(level) {
+  const progress = getLevelProgress();
+  return level <= progress.maxUnlockedLevel;
+}
+
+function isLevelCompleted(level) {
+  const progress = getLevelProgress();
+  return progress.completedLevels.includes(level);
 }
 
 function formatTime(seconds) {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function generateId(len = 6) {
@@ -274,13 +384,43 @@ function washCards(level, cards) {
   return checkCover([...shuffled, ...eliminatedCards]);
 }
 
-function initGame(level = 1) {
-  const cards = checkCover(generateCards(level));
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function initApp() {
   const gameStats = getGameStats();
-  
+  const levelProgress = getLevelProgress();
+  const settings = getSettings();
+
   gameState = {
-    currentLevel: level,
-    cards,
+    currentTab: 0,
+    gameStats,
+    levelProgress,
+    settings,
+    currentPage: 'game',
+    showStartScreen: true,
+    gamePaused: false,
+    showLoseModal: false,
+    showWinModal: false,
+    showLockedModal: false,
+    showGameStatsModal: false,
+    showGameGuideModal: false,
+    showSettingsModal: false,
+    lockedLevel: null,
+    selectedLevel: 1,
+    currentLevel: 1,
+    cards: [],
     queue: [],
     score: 0,
     elapsedTime: 0,
@@ -288,13 +428,40 @@ function initGame(level = 1) {
     shuffleCount: 2,
     failCount: 0,
     hasShared: false,
-    gamePaused: false,
-    showStartScreen: true,
-    showLoseModal: false,
-    showWinModal: false,
-    gameStats,
     history: []
   };
+
+  try {
+    const shared = wx.getStorageSync(SHARE_KEY);
+    if (shared) {
+      gameState.hasShared = true;
+    }
+  } catch (e) {
+    console.error('检查分享状态失败:', e);
+  }
+
+  render();
+}
+
+function initGame(level = 1) {
+  const cards = checkCover(generateCards(level));
+  const gameStats = getGameStats();
+
+  gameState.cards = cards;
+  gameState.queue = [];
+  gameState.score = 0;
+  gameState.elapsedTime = 0;
+  gameState.undoCount = 2;
+  gameState.shuffleCount = 2;
+  gameState.failCount = 0;
+  gameState.hasShared = false;
+  gameState.gamePaused = false;
+  gameState.showStartScreen = true;
+  gameState.showLoseModal = false;
+  gameState.showWinModal = false;
+  gameState.gameStats = gameStats;
+  gameState.history = [];
+  gameState.currentLevel = level;
 
   try {
     const shared = wx.getStorageSync(SHARE_KEY);
@@ -347,23 +514,214 @@ function startGame(lvl = 1) {
   render();
 }
 
-function render() {
-  console.log('=== render 被调用 ===');
-  console.log('gameState.showStartScreen:', gameState.showStartScreen);
-  console.log('gameState.cards 数量:', gameState.cards ? gameState.cards.length : 0);
+function handleCardClick(card) {
+  if (gameState.gamePaused || gameState.showLoseModal || gameState.showWinModal) return;
+  
+  const cardIndex = gameState.cards.findIndex(c => c.id === card.id);
+  if (cardIndex === -1) return;
+  
+  const targetCard = gameState.cards[cardIndex];
+  if (targetCard.isCover || targetCard.status !== 0) return;
 
+  gameState.history.push({
+    cards: JSON.parse(JSON.stringify(gameState.cards)),
+    queue: JSON.parse(JSON.stringify(gameState.queue)),
+    score: gameState.score
+  });
+
+  if (gameState.history.length > 10) {
+    gameState.history.shift();
+  }
+
+  const updateScene = gameState.cards.slice();
+  const symbol = updateScene.find(c => c.id === card.id);
+  symbol.status = 1;
+
+  let updateQueue = gameState.queue.slice();
+  updateQueue.push(symbol);
+
+  let newScore = gameState.score + 10;
+  const checkedCards = checkCover(updateScene);
+  gameState.cards = checkedCards;
+  gameState.queue = updateQueue;
+  gameState.score = newScore;
+
+  const typeCounts = {};
+  updateQueue.forEach(card => {
+    typeCounts[card.type] = (typeCounts[card.type] || 0) + 1;
+  });
+
+  const typesToRemove = Object.keys(typeCounts).filter(type => typeCounts[type] >= 3);
+
+  if (typesToRemove.length > 0) {
+    typesToRemove.forEach(type => {
+      let removed = 0;
+      updateQueue = updateQueue.filter(card => {
+        if (card.type === type && removed < 3) {
+          removed++;
+          const find = updateScene.find(i => i.id === card.id);
+          if (find) {
+            find.status = 2;
+          }
+          return false;
+        }
+        return true;
+      });
+    });
+
+    newScore += 100 * typesToRemove.length;
+    gameState.score = newScore;
+  }
+
+  gameState.queue = updateQueue;
+  const finalCheckedCards = checkCover(updateScene);
+  gameState.cards = finalCheckedCards;
+
+  if (updateQueue.length === 7) {
+    gameState.showLoseModal = true;
+    if (gameState.timer) {
+      clearInterval(gameState.timer);
+    }
+  }
+
+  const winCheck = !finalCheckedCards.find(s => s.status !== 2);
+  if (winCheck) {
+    gameState.showWinModal = true;
+    
+    completeLevel(gameState.currentLevel, gameState.elapsedTime);
+    
+    const newStats = { ...gameState.gameStats };
+    newStats.highScore = Math.max(newStats.highScore, newScore);
+    newStats.totalWins += 1;
+    newStats.currentWinStreak += 1;
+    newStats.longestWinStreak = Math.max(newStats.longestWinStreak, newStats.currentWinStreak);
+    saveGameStats(newStats);
+    gameState.gameStats = newStats;
+    
+    if (gameState.timer) {
+      clearInterval(gameState.timer);
+    }
+  }
+
+  render();
+}
+
+function handleUndo() {
+  if (gameState.gamePaused || gameState.history.length === 0 || gameState.undoCount <= 0) return;
+  const lastState = gameState.history.pop();
+  gameState.cards = lastState.cards;
+  gameState.queue = lastState.queue;
+  gameState.score = lastState.score;
+  gameState.undoCount--;
+  render();
+}
+
+function handleShuffle() {
+  if (gameState.gamePaused || gameState.shuffleCount <= 0) return;
+  const washedCards = washCards(gameState.currentLevel, gameState.cards);
+  gameState.cards = washedCards;
+  gameState.shuffleCount--;
+  render();
+}
+
+function handleRestart() {
+  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
+  if (needShare) {
+    wx.showToast({
+      title: '请先分享到微信群！',
+      icon: 'none',
+      duration: 2000
+    });
+    return;
+  }
+  startGame(gameState.currentLevel);
+}
+
+function handleLoseConfirm() {
+  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
+  if (needShare) {
+    wx.showToast({
+      title: '请先分享到微信群！',
+      icon: 'none',
+      duration: 2000
+    });
+    return;
+  }
+
+  const newFailCount = gameState.failCount + 1;
+  gameState.failCount = newFailCount;
+
+  if (gameState.hasShared) {
+    try {
+      wx.removeStorageSync(SHARE_KEY);
+      gameState.hasShared = false;
+    } catch (e) {
+      console.error('清除分享状态失败:', e);
+    }
+  }
+
+  const newStats = { ...gameState.gameStats };
+  newStats.currentWinStreak = 0;
+  saveGameStats(newStats);
+  gameState.gameStats = newStats;
+
+  startGame(gameState.currentLevel);
+  gameState.failCount = newFailCount;
+}
+
+function handleNextLevel() {
+  if (gameState.currentLevel >= 4) {
+    startGame(1);
+  } else {
+    startGame(gameState.currentLevel + 1);
+  }
+}
+
+function handleLevelClick(level) {
+  if (!isLevelUnlocked(level.id)) {
+    gameState.lockedLevel = level;
+    gameState.showLockedModal = true;
+    render();
+    return;
+  }
+  gameState.selectedLevel = level.id;
+  gameState.currentLevel = level.id;
+  gameState.currentTab = 0;
+  initGame(level.id);
+}
+
+function getDifficultyText(difficulty) {
+  const map = {
+    easy: '简单',
+    medium: '中等',
+    hard: '困难'
+  };
+  return map[difficulty] || difficulty;
+}
+
+function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = '#FEF3E2';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  if (gameState.currentTab === 0) {
+    renderGameTab();
+  } else if (gameState.currentTab === 1) {
+    renderLevelTab();
+  } else if (gameState.currentTab === 2) {
+    renderMineTab();
+  }
+
+  renderTabBar();
+}
+
+function renderGameTab() {
   if (gameState.showStartScreen) {
-    console.log('渲染开始页面');
     renderStartScreen();
     return;
   }
 
-  console.log('渲染游戏页面');
   renderGameScreen();
 }
 
@@ -751,181 +1109,492 @@ function renderWinModal() {
   gameState.winHomeBtn = { x: homeBtnX, y: homeBtnY, width: 200, height: 45 };
 }
 
-function roundRect(ctx, x, y, width, height, radius) {
+function renderLevelTab() {
+  const levelProgress = getLevelProgress();
+  gameState.levelProgress = levelProgress;
+
+  ctx.fillStyle = '#FF9A3C';
+  ctx.font = 'bold 24px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🎮 关卡选择', canvas.width / 2, 40);
+
+  ctx.font = '14px Arial, sans-serif';
+  ctx.fillStyle = '#6B5B4F';
+  ctx.fillText(`挑战关卡进度：${levelProgress.completedLevels.length} / 4`, canvas.width / 2, 65);
+
+  let y = 85;
+  LEVELS.forEach(level => {
+    const unlocked = isLevelUnlocked(level.id);
+    const completed = isLevelCompleted(level.id);
+    
+    const cardX = 20;
+    const cardY = y;
+    const cardWidth = canvas.width - 40;
+    const cardHeight = 140;
+
+    ctx.fillStyle = unlocked ? '#FFFFFF' : '#E5E5E5';
+    ctx.strokeStyle = completed ? '#4CAF50' : (unlocked ? '#FF9A3C' : '#CCCCCC');
+    ctx.lineWidth = 3;
+    roundRect(ctx, cardX, cardY, cardWidth, cardHeight, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 20px Arial, sans-serif';
+    ctx.fillStyle = '#6B5B4F';
+    
+    const levelIcon = completed ? '✅' : (unlocked ? '🎯' : '🔒');
+    ctx.fillText(`${levelIcon} ${level.name}`, cardX + 20, cardY + 35);
+
+    ctx.font = '14px Arial, sans-serif';
+    const difficultyColor = level.difficulty === 'hard' ? '#FF6B6B' : '#4CAF50';
+    ctx.fillStyle = difficultyColor;
+    ctx.textAlign = 'right';
+    ctx.fillText(getDifficultyText(level.difficulty), cardX + cardWidth - 20, cardY + 35);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#6B5B4F';
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillText(`卡牌种类：${level.cardTypes.length}种`, cardX + 20, cardY + 60);
+    ctx.fillText(`卡牌数量：${level.cardCount}张`, cardX + 20, cardY + 80);
+    ctx.fillText(level.description, cardX + 20, cardY + 105);
+
+    if (completed) {
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = 'bold 14px Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('✓ 已通关', cardX + cardWidth - 20, cardY + 105);
+    } else if (!unlocked) {
+      ctx.fillStyle = '#999999';
+      ctx.font = 'bold 14px Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('🔒 未解锁', cardX + cardWidth - 20, cardY + 105);
+    }
+
+    gameState.levelCards = gameState.levelCards || [];
+    gameState.levelCards[level.id] = { x: cardX, y: cardY, width: cardWidth, height: cardHeight, level };
+
+    y += cardHeight + 15;
+  });
+
+  if (gameState.showLockedModal && gameState.lockedLevel) {
+    renderLockedModal();
+  }
+}
+
+function renderLockedModal() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const modalX = canvas.width / 2 - 130;
+  const modalY = canvas.height / 2 - 140;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 3;
+  roundRect(ctx, modalX, modalY, 260, 280, 15);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🔒 关卡未解锁', canvas.width / 2, modalY + 45);
+
+  ctx.fillText('✕', modalX + 240, modalY + 35);
+  gameState.lockedModalCloseBtn = { x: modalX + 215, y: modalY + 10, width: 40, height: 35 };
+
+  ctx.font = '48px Arial, sans-serif';
+  ctx.fillText('🔐', canvas.width / 2, modalY + 100);
+
+  ctx.font = 'bold 18px Arial, sans-serif';
+  ctx.fillStyle = '#6B5B4F';
+  ctx.fillText(gameState.lockedLevel.name, canvas.width / 2, modalY + 135);
+
+  ctx.font = '14px Arial, sans-serif';
+  ctx.fillText('此关卡暂时无法进入', canvas.width / 2, modalY + 155);
+
+  const requiredLevel = gameState.lockedLevel ? LEVELS.find(l => l.id === gameState.lockedLevel.id - 1) : null;
+  if (requiredLevel) {
+    ctx.fillStyle = '#FFF5E6';
+    roundRect(ctx, modalX + 20, modalY + 170, 220, 60, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#FF9A3C';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.fillStyle = '#6B5B4F';
+    ctx.fillText('解锁条件', canvas.width / 2, modalY + 190);
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillText(`🎯 完成「${requiredLevel.name}」`, canvas.width / 2, modalY + 210);
+  }
+
+  ctx.font = '14px Arial, sans-serif';
+  ctx.fillStyle = '#6B5B4F';
+  ctx.fillText('加油挑战前面的关卡吧！', canvas.width / 2, modalY + 250);
+
+  const confirmBtnX = canvas.width / 2 - 80;
+  const confirmBtnY = modalY + 265;
+  ctx.fillStyle = '#FF9A3C';
+  ctx.strokeStyle = '#E88932';
+  ctx.lineWidth = 2;
+  roundRect(ctx, confirmBtnX, confirmBtnY, 160, 40, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 16px Arial, sans-serif';
+  ctx.fillText('我知道了', canvas.width / 2, confirmBtnY + 25);
+
+  gameState.lockedModalConfirmBtn = { x: confirmBtnX, y: confirmBtnY, width: 160, height: 40 };
+}
+
+function renderMineTab() {
+  const gameStats = getGameStats();
+  const levelProgress = getLevelProgress();
+  gameState.gameStats = gameStats;
+  gameState.levelProgress = levelProgress;
+
+  const isDogKingUnlocked = levelProgress.completedLevels.length === 4;
+
+  ctx.fillStyle = '#FF9A3C';
+  roundRect(ctx, 0, 0, canvas.width, 180, 0);
+  ctx.fill();
+
+  ctx.font = '48px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🐕', canvas.width / 2, 80);
+
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('狗狗玩家', canvas.width / 2, 110);
+
+  ctx.font = '14px Arial, sans-serif';
+  ctx.fillText('开心消除，快乐生活！', canvas.width / 2, 135);
+
+  const achievementY = 160;
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, 20, achievementY, canvas.width - 40, 220, 15);
+  ctx.fill();
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 18px Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('🏆 狗王勋章', 40, achievementY + 35);
+
+  ctx.textAlign = 'right';
+  if (isDogKingUnlocked) {
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('👑 狗王', canvas.width - 40, achievementY + 35);
+  }
+
+  ctx.textAlign = 'left';
+  ctx.font = '14px Arial, sans-serif';
+  ctx.fillStyle = '#6B5B4F';
+  if (isDogKingUnlocked) {
+    ctx.fillText('恭喜！你已成为真正的狗王！', 40, achievementY + 60);
+  } else {
+    ctx.fillText('通关所有4个关卡，解锁狗王勋章！', 40, achievementY + 60);
+  }
+
+  const progressWidth = canvas.width - 80;
+  const progressX = 40;
+  const progressY = achievementY + 75;
+  ctx.fillStyle = '#E5E5E5';
+  roundRect(ctx, progressX, progressY, progressWidth, 20, 10);
+  ctx.fill();
+
+  const fillWidth = (levelProgress.completedLevels.length / 4) * progressWidth;
+  ctx.fillStyle = '#FF9A3C';
+  roundRect(ctx, progressX, progressY, fillWidth, 20, 10);
+  ctx.fill();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = '14px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${levelProgress.completedLevels.length} / 4`, canvas.width / 2, progressY + 15);
+
+  let checkY = achievementY + 105;
+  LEVELS.forEach(level => {
+    const completed = isLevelCompleted(level.id);
+    const bestTime = getBestTime(level.id);
+
+    ctx.fillStyle = completed ? '#4CAF50' : '#999999';
+    ctx.font = '20px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(completed ? '✓' : '○', 40, checkY);
+
+    ctx.fillStyle = '#6B5B4F';
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillText(level.name, 65, checkY);
+
+    if (completed && bestTime !== undefined) {
+      ctx.textAlign = 'right';
+      ctx.fillText(`⏱️ ${formatTime(bestTime)}`, canvas.width - 40, checkY);
+    }
+
+    checkY += 25;
+  });
+
+  const statsY = achievementY + 235;
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, 20, statsY, canvas.width - 40, 120, 15);
+  ctx.fill();
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 16px Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('游戏数据', 40, statsY + 35);
+
+  const statItems = [
+    { value: gameStats.totalWins, label: '通关次数', x: canvas.width / 4 },
+    { value: gameStats.highScore, label: '最高分数', x: canvas.width / 2 },
+    { value: gameStats.longestWinStreak, label: '最长连胜', x: canvas.width * 3 / 4 }
+  ];
+
+  statItems.forEach(stat => {
+    ctx.fillStyle = '#FF9A3C';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(stat.value), stat.x, statsY + 75);
+    ctx.fillStyle = '#6B5B4F';
+    ctx.font = '12px Arial, sans-serif';
+    ctx.fillText(stat.label, stat.x, statsY + 95);
+  });
+
+  const menuY = statsY + 135;
+  const menuItems = [
+    { icon: '📊', text: '游戏记录', action: 'stats' },
+    { icon: '📖', text: '游戏说明', action: 'guide' },
+    { icon: '⚙️', text: '游戏设置', action: 'settings' },
+    { icon: '❤️', text: '关于我们', action: 'about' }
+  ];
+
+  gameState.menuButtons = [];
+
+  menuItems.forEach((item, index) => {
+    const itemY = menuY + index * 60;
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(ctx, 20, itemY, canvas.width - 40, 55, 10);
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.font = '24px Arial, sans-serif';
+    ctx.fillText(item.icon, 40, itemY + 35);
+    ctx.fillStyle = '#6B5B4F';
+    ctx.font = '16px Arial, sans-serif';
+    ctx.fillText(item.text, 80, itemY + 35);
+
+    ctx.textAlign = 'right';
+    ctx.font = '20px Arial, sans-serif';
+    ctx.fillText('>', canvas.width - 40, itemY + 35);
+
+    gameState.menuButtons.push({ ...item, x: 20, y: itemY, width: canvas.width - 40, height: 55 });
+  });
+
+  if (gameState.showGameStatsModal) {
+    renderGameStatsModal();
+  }
+  if (gameState.showGameGuideModal) {
+    renderGameGuideModal();
+  }
+  if (gameState.showSettingsModal) {
+    renderSettingsModal();
+  }
+}
+
+function renderGameStatsModal() {
+  const gameStats = getGameStats();
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const modalX = canvas.width / 2 - 130;
+  const modalY = canvas.height / 2 - 200;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 3;
+  roundRect(ctx, modalX, modalY, 260, 400, 15);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('📊 游戏记录', canvas.width / 2, modalY + 40);
+
+  ctx.fillText('✕', modalX + 240, modalY + 30);
+  gameState.statsModalCloseBtn = { x: modalX + 215, y: modalY + 5, width: 40, height: 35 };
+
+  let detailY = modalY + 60;
+  const detailItems = [
+    { icon: '🏆', label: '最高分', value: String(gameStats.highScore) },
+    { icon: '🎮', label: '通关次数', value: String(gameStats.totalWins) },
+    { icon: '🔥', label: '最长连胜', value: String(gameStats.longestWinStreak) },
+    { icon: '📈', label: '当前连胜', value: String(gameStats.currentWinStreak) }
+  ];
+
+  detailItems.forEach(item => {
+    ctx.fillStyle = '#FFF5E6';
+    roundRect(ctx, modalX + 20, detailY, 220, 50, 10);
+    ctx.fill();
+
+    ctx.fillStyle = '#6B5B4F';
+    ctx.font = '24px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.icon, modalX + 35, detailY + 33);
+
+    ctx.font = '12px Arial, sans-serif';
+    ctx.fillText(item.label, modalX + 70, detailY + 30);
+    ctx.font = 'bold 18px Arial, sans-serif';
+    ctx.fillStyle = '#FF9A3C';
+    ctx.textAlign = 'right';
+    ctx.fillText(item.value, modalX + 230, detailY + 33);
+
+    detailY += 60;
+  });
+}
+
+function renderGameGuideModal() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const modalX = canvas.width / 2 - 130;
+  const modalY = canvas.height / 2 - 180;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 3;
+  roundRect(ctx, modalX, modalY, 260, 360, 15);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('📖 游戏说明', canvas.width / 2, modalY + 40);
+
+  ctx.fillText('✕', modalX + 240, modalY + 30);
+  gameState.guideModalCloseBtn = { x: modalX + 215, y: modalY + 5, width: 40, height: 35 };
+
+  ctx.textAlign = 'left';
+  ctx.font = '14px Arial, sans-serif';
+  let guideY = modalY + 65;
+  const guideTexts = [
+    '1. 点击未被遮挡的卡牌',
+    '2. 凑齐3张相同的就能消除',
+    '3. 卡槽满了就输了哦～',
+    '4. 每局有2次洗牌机会',
+    '5. 每局有2次撤回机会',
+    '6. 失败1次后需要分享才能继续'
+  ];
+
+  guideTexts.forEach(text => {
+    ctx.fillText(text, modalX + 25, guideY);
+    guideY += 30;
+  });
+}
+
+function renderSettingsModal() {
+  const settings = getSettings();
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const modalX = canvas.width / 2 - 130;
+  const modalY = canvas.height / 2 - 150;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 3;
+  roundRect(ctx, modalX, modalY, 260, 300, 15);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚙️ 游戏设置', canvas.width / 2, modalY + 40);
+
+  ctx.fillText('✕', modalX + 240, modalY + 30);
+  gameState.settingsModalCloseBtn = { x: modalX + 215, y: modalY + 5, width: 40, height: 35 };
+
+  ctx.textAlign = 'left';
+  ctx.font = '16px Arial, sans-serif';
+
+  const soundY = modalY + 70;
+  ctx.fillText('🔊 音效', modalX + 30, soundY + 25);
+  
+  ctx.fillStyle = settings.soundEnabled ? '#4CAF50' : '#CCCCCC';
+  roundRect(ctx, modalX + 170, soundY, 70, 35, 17);
+  ctx.fill();
+
+  ctx.fillStyle = '#FFFFFF';
   ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
+  ctx.arc(settings.soundEnabled ? (modalX + 225) : (modalX + 185), soundY + 17, 14, 0, 2 * Math.PI);
+  ctx.fill();
+
+  gameState.soundToggleBtn = { x: modalX + 170, y: soundY, width: 70, height: 35 };
+
+  const musicY = modalY + 125;
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = '16px Arial, sans-serif';
+  ctx.fillText('🎵 音乐', modalX + 30, musicY + 25);
+
+  ctx.fillStyle = settings.musicEnabled ? '#4CAF50' : '#CCCCCC';
+  roundRect(ctx, modalX + 170, musicY, 70, 35, 17);
+  ctx.fill();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(settings.musicEnabled ? (modalX + 225) : (modalX + 185), musicY + 17, 14, 0, 2 * Math.PI);
+  ctx.fill();
+
+  gameState.musicToggleBtn = { x: modalX + 170, y: musicY, width: 70, height: 35 };
 }
 
-function handleCardClick(card) {
-  if (gameState.gamePaused || gameState.showLoseModal || gameState.showWinModal) return;
-  
-  const cardIndex = gameState.cards.findIndex(c => c.id === card.id);
-  if (cardIndex === -1) return;
-  
-  const targetCard = gameState.cards[cardIndex];
-  if (targetCard.isCover || targetCard.status !== 0) return;
+function renderTabBar() {
+  const tabBarY = canvas.height - 60;
+  const tabWidth = canvas.width / 3;
 
-  gameState.history.push({
-    cards: JSON.parse(JSON.stringify(gameState.cards)),
-    queue: JSON.parse(JSON.stringify(gameState.queue)),
-    score: gameState.score
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, tabBarY, canvas.width, 60);
+
+  ctx.strokeStyle = '#E5E5E5';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, tabBarY);
+  ctx.lineTo(canvas.width, tabBarY);
+  ctx.stroke();
+
+  const tabs = [
+    { index: 0, label: '游戏' },
+    { index: 1, label: '关卡' },
+    { index: 2, label: '我的' }
+  ];
+
+  tabs.forEach(tab => {
+    const isActive = gameState.currentTab === tab.index;
+    const x = tab.index * tabWidth;
+    
+    ctx.fillStyle = isActive ? '#FF9A3C' : '#6B5B4F';
+    ctx.font = isActive ? 'bold 16px Arial, sans-serif' : '16px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(tab.label, x + tabWidth / 2, tabBarY + 38);
+
+    gameState.tabButtons = gameState.tabButtons || [];
+    gameState.tabButtons[tab.index] = { x, y: tabBarY, width: tabWidth, height: 60, index: tab.index };
   });
-
-  if (gameState.history.length > 10) {
-    gameState.history.shift();
-  }
-
-  const updateScene = gameState.cards.slice();
-  const symbol = updateScene.find(c => c.id === card.id);
-  symbol.status = 1;
-
-  let updateQueue = gameState.queue.slice();
-  updateQueue.push(symbol);
-
-  let newScore = gameState.score + 10;
-  const checkedCards = checkCover(updateScene);
-  gameState.cards = checkedCards;
-  gameState.queue = updateQueue;
-  gameState.score = newScore;
-
-  const typeCounts = {};
-  updateQueue.forEach(card => {
-    typeCounts[card.type] = (typeCounts[card.type] || 0) + 1;
-  });
-
-  const typesToRemove = Object.keys(typeCounts).filter(type => typeCounts[type] >= 3);
-
-  if (typesToRemove.length > 0) {
-    typesToRemove.forEach(type => {
-      let removed = 0;
-      updateQueue = updateQueue.filter(card => {
-        if (card.type === type && removed < 3) {
-          removed++;
-          const find = updateScene.find(i => i.id === card.id);
-          if (find) {
-            find.status = 2;
-          }
-          return false;
-        }
-        return true;
-      });
-    });
-
-    newScore += 100 * typesToRemove.length;
-    gameState.score = newScore;
-  }
-
-  gameState.queue = updateQueue;
-  const finalCheckedCards = checkCover(updateScene);
-  gameState.cards = finalCheckedCards;
-
-  if (updateQueue.length === 7) {
-    gameState.showLoseModal = true;
-    if (gameState.timer) {
-      clearInterval(gameState.timer);
-    }
-  }
-
-  const winCheck = !finalCheckedCards.find(s => s.status !== 2);
-  if (winCheck) {
-    gameState.showWinModal = true;
-    const newStats = { ...gameState.gameStats };
-    newStats.highScore = Math.max(newStats.highScore, newScore);
-    newStats.totalWins += 1;
-    newStats.currentWinStreak += 1;
-    newStats.longestWinStreak = Math.max(newStats.longestWinStreak, newStats.currentWinStreak);
-    saveGameStats(newStats);
-    gameState.gameStats = newStats;
-    completeLevel(gameState.currentLevel, gameState.elapsedTime);
-    if (gameState.timer) {
-      clearInterval(gameState.timer);
-    }
-  }
-
-  render();
 }
-
-function handleUndo() {
-  if (gameState.gamePaused || gameState.history.length === 0 || gameState.undoCount <= 0) return;
-  const lastState = gameState.history.pop();
-  gameState.cards = lastState.cards;
-  gameState.queue = lastState.queue;
-  gameState.score = lastState.score;
-  gameState.undoCount--;
-  render();
-}
-
-function handleShuffle() {
-  if (gameState.gamePaused || gameState.shuffleCount <= 0) return;
-  const washedCards = washCards(gameState.currentLevel, gameState.cards);
-  gameState.cards = washedCards;
-  gameState.shuffleCount--;
-  render();
-}
-
-function handleRestart() {
-  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
-  if (needShare) {
-    wx.showToast({
-      title: '请先分享到微信群！',
-      icon: 'none',
-      duration: 2000
-    });
-    return;
-  }
-  startGame(gameState.currentLevel);
-}
-
-function handleLoseConfirm() {
-  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
-  if (needShare) {
-    wx.showToast({
-      title: '请先分享到微信群！',
-      icon: 'none',
-      duration: 2000
-    });
-    return;
-  }
-
-  const newFailCount = gameState.failCount + 1;
-  gameState.failCount = newFailCount;
-
-  if (gameState.hasShared) {
-    try {
-      wx.removeStorageSync(SHARE_KEY);
-      gameState.hasShared = false;
-    } catch (e) {
-      console.error('清除分享状态失败:', e);
-    }
-  }
-
-  const newStats = { ...gameState.gameStats };
-  newStats.currentWinStreak = 0;
-  saveGameStats(newStats);
-  gameState.gameStats = newStats;
-
-  startGame(gameState.currentLevel);
-  gameState.failCount = newFailCount;
-}
-
-console.log('=== 小游戏启动 ===');
-console.log('Canvas 宽高:', canvas.width, 'x', canvas.height);
-console.log('System info:', systemInfo);
-
-ctx.fillStyle = 'red';
-ctx.fillRect(0, 0, 100, 100);
-console.log('已绘制测试红色方块');
-
-initGame(1);
 
 wx.onTouchStart(function(res) {
   const touch = res.touches[0];
@@ -933,71 +1602,91 @@ wx.onTouchStart(function(res) {
   const y = touch.clientY;
   console.log('Touch start:', x, y);
 
-  if (gameState.showStartScreen) {
-    if (gameState.startBtn && x >= gameState.startBtn.x && x <= gameState.startBtn.x + gameState.startBtn.width &&
-        y >= gameState.startBtn.y && y <= gameState.startBtn.y + gameState.startBtn.height) {
-      console.log('点击开始按钮');
-      startGame(1);
+  if (gameState.currentTab === 0) {
+    handleGameTabClick(x, y);
+  } else if (gameState.currentTab === 1) {
+    handleLevelTabClick(x, y);
+  } else if (gameState.currentTab === 2) {
+    handleMineTabClick(x, y);
+  }
+
+  if (gameState.tabButtons) {
+    for (let i = 0; i < gameState.tabButtons.length; i++) {
+      const btn = gameState.tabButtons[i];
+      if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
+        gameState.currentTab = btn.index;
+        render();
+        return;
+      }
     }
+  }
+});
+
+function handleGameTabClick(x, y) {
+  if (gameState.showGameStatsModal || gameState.showGameGuideModal || gameState.showSettingsModal || gameState.showLockedModal) {
     return;
   }
 
+  if (gameState.showStartScreen) {
+    if (gameState.startBtn && x >= gameState.startBtn.x && x <= gameState.startBtn.x + gameState.startBtn.width && y >= gameState.startBtn.y && y <= gameState.startBtn.y + gameState.startBtn.height) {
+      startGame(gameState.currentLevel);
+      return;
+    }
+  }
+
   if (gameState.gamePaused && gameState.pauseContinueBtn) {
-    if (x >= gameState.pauseContinueBtn.x && x <= gameState.pauseContinueBtn.x + gameState.pauseContinueBtn.width &&
-        y >= gameState.pauseContinueBtn.y && y <= gameState.pauseContinueBtn.y + gameState.pauseContinueBtn.height) {
-      console.log('点击继续按钮');
+    if (x >= gameState.pauseContinueBtn.x && x <= gameState.pauseContinueBtn.x + gameState.pauseContinueBtn.width && y >= gameState.pauseContinueBtn.y && y <= gameState.pauseContinueBtn.y + gameState.pauseContinueBtn.height) {
       gameState.gamePaused = false;
       render();
       return;
     }
   }
 
-  if (gameState.pauseBtn && x >= gameState.pauseBtn.x && x <= gameState.pauseBtn.x + gameState.pauseBtn.width &&
-      y >= gameState.pauseBtn.y && y <= gameState.pauseBtn.y + gameState.pauseBtn.height) {
-    console.log('点击暂停按钮');
-    if (!gameState.showLoseModal && !gameState.showWinModal) {
-      gameState.gamePaused = !gameState.gamePaused;
-      render();
-    }
-    return;
-  }
-
   if (gameState.showLoseModal) {
-    if (gameState.loseShareBtn && x >= gameState.loseShareBtn.x && x <= gameState.loseShareBtn.x + gameState.loseShareBtn.width &&
-        y >= gameState.loseShareBtn.y && y <= gameState.loseShareBtn.y + gameState.loseShareBtn.height) {
-      console.log('点击分享按钮（小游戏用分享API）');
+    if (gameState.loseShareBtn && x >= gameState.loseShareBtn.x && x <= gameState.loseShareBtn.x + gameState.loseShareBtn.width && y >= gameState.loseShareBtn.y && y <= gameState.loseShareBtn.y + gameState.loseShareBtn.height) {
       wx.shareAppMessage({
-        title: '🐕 狗了个狗 - 超好玩的消除游戏！'
+        title: '狗了个狗 - 超好玩的狗狗消除游戏！',
+        imageUrl: '',
+        success: function() {
+          try {
+            const timestamp = Date.now();
+            console.log('保存分享状态:', timestamp);
+            wx.setStorageSync(SHARE_KEY, timestamp);
+            gameState.hasShared = true;
+            wx.showToast({
+              title: '分享成功！',
+              icon: 'success',
+              duration: 1000
+            });
+            render();
+          } catch (e) {
+            console.error('保存分享状态失败:', e);
+          }
+        }
       });
       return;
     }
-    if (gameState.loseRestartBtn && x >= gameState.loseRestartBtn.x && x <= gameState.loseRestartBtn.x + gameState.loseRestartBtn.width &&
-        y >= gameState.loseRestartBtn.y && y <= gameState.loseRestartBtn.y + gameState.loseRestartBtn.height) {
-      console.log('点击重新开始按钮');
-      handleLoseConfirm();
-      return;
-    }
-    if (gameState.loseHomeBtn && x >= gameState.loseHomeBtn.x && x <= gameState.loseHomeBtn.x + gameState.loseHomeBtn.width &&
-        y >= gameState.loseHomeBtn.y && y <= gameState.loseHomeBtn.y + gameState.loseHomeBtn.height) {
-      console.log('点击返回首页按钮');
+
+    if (gameState.loseHomeBtn && x >= gameState.loseHomeBtn.x && x <= gameState.loseHomeBtn.x + gameState.loseHomeBtn.width && y >= gameState.loseHomeBtn.y && y <= gameState.loseHomeBtn.y + gameState.loseHomeBtn.height) {
       gameState.showLoseModal = false;
       gameState.showStartScreen = true;
       render();
+      return;
+    }
+
+    if (gameState.loseRestartBtn && x >= gameState.loseRestartBtn.x && x <= gameState.loseRestartBtn.x + gameState.loseRestartBtn.width && y >= gameState.loseRestartBtn.y && y <= gameState.loseRestartBtn.y + gameState.loseRestartBtn.height) {
+      handleLoseConfirm();
       return;
     }
     return;
   }
 
   if (gameState.showWinModal) {
-    if (gameState.winNextBtn && x >= gameState.winNextBtn.x && x <= gameState.winNextBtn.x + gameState.winNextBtn.width &&
-        y >= gameState.winNextBtn.y && y <= gameState.winNextBtn.y + gameState.winNextBtn.height) {
-      console.log('点击下一关按钮');
+    if (gameState.winNextBtn && x >= gameState.winNextBtn.x && x <= gameState.winNextBtn.x + gameState.winNextBtn.width && y >= gameState.winNextBtn.y && y <= gameState.winNextBtn.y + gameState.winNextBtn.height) {
       handleNextLevel();
       return;
     }
-    if (gameState.winHomeBtn && x >= gameState.winHomeBtn.x && x <= gameState.winHomeBtn.x + gameState.winHomeBtn.width &&
-        y >= gameState.winHomeBtn.y && y <= gameState.winHomeBtn.y + gameState.winHomeBtn.height) {
-      console.log('点击返回首页按钮');
+    if (gameState.winHomeBtn && x >= gameState.winHomeBtn.x && x <= gameState.winHomeBtn.x + gameState.winHomeBtn.width && y >= gameState.winHomeBtn.y && y <= gameState.winHomeBtn.y + gameState.winHomeBtn.height) {
       gameState.showWinModal = false;
       gameState.showStartScreen = true;
       render();
@@ -1006,23 +1695,20 @@ wx.onTouchStart(function(res) {
     return;
   }
 
-  if (gameState.gamePaused) {
+  if (gameState.pauseBtn && x >= gameState.pauseBtn.x && x <= gameState.pauseBtn.x + gameState.pauseBtn.width && y >= gameState.pauseBtn.y && y <= gameState.pauseBtn.y + gameState.pauseBtn.height) {
+    gameState.gamePaused = !gameState.gamePaused;
+    render();
     return;
   }
 
-  if (gameState.controlButtons) {
+  if (!gameState.gamePaused && !gameState.showStartScreen && gameState.controlButtons) {
     for (const btn of gameState.controlButtons) {
       if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
-        if (btn.disabled) {
-          console.log('按钮已禁用');
-          return;
-        }
-        console.log('点击控制按钮:', btn.action);
-        if (btn.action === 'undo') {
+        if (btn.action === 'undo' && !btn.disabled) {
           handleUndo();
-        } else if (btn.action === 'shuffle') {
+        } else if (btn.action === 'shuffle' && !btn.disabled) {
           handleShuffle();
-        } else if (btn.action === 'restart') {
+        } else if (btn.action === 'restart' && !btn.disabled) {
           handleRestart();
         }
         return;
@@ -1030,65 +1716,128 @@ wx.onTouchStart(function(res) {
     }
   }
 
-  const clickableCards = gameState.cards.filter(c => c.status === 0 && !c.isCover);
-  clickableCards.sort((a, b) => b.zIndex - a.zIndex);
-  
-  for (const card of clickableCards) {
-    if (x >= card.x && x <= card.x + card.width &&
-        y >= card.y && y <= card.y + card.height) {
-      console.log('点击卡牌:', card.emoji, card.id);
-      handleCardClick(card);
+  if (!gameState.gamePaused && !gameState.showStartScreen) {
+    const clickableCards = gameState.cards
+      .filter(c => c.status === 0)
+      .sort((a, b) => b.zIndex - a.zIndex);
+
+    for (const card of clickableCards) {
+      if (x >= card.x && x <= card.x + card.width && y >= card.y && y <= card.y + card.height) {
+        handleCardClick(card);
+        return;
+      }
+    }
+  }
+}
+
+function handleLevelTabClick(x, y) {
+  if (gameState.showLockedModal) {
+    if (gameState.lockedModalCloseBtn && x >= gameState.lockedModalCloseBtn.x && x <= gameState.lockedModalCloseBtn.x + gameState.lockedModalCloseBtn.width && y >= gameState.lockedModalCloseBtn.y && y <= gameState.lockedModalCloseBtn.y + gameState.lockedModalCloseBtn.height) {
+      gameState.showLockedModal = false;
+      gameState.lockedLevel = null;
+      render();
+      return;
+    }
+
+    if (gameState.lockedModalConfirmBtn && x >= gameState.lockedModalConfirmBtn.x && x <= gameState.lockedModalConfirmBtn.x + gameState.lockedModalConfirmBtn.width && y >= gameState.lockedModalConfirmBtn.y && y <= gameState.lockedModalConfirmBtn.y + gameState.lockedModalConfirmBtn.height) {
+      gameState.showLockedModal = false;
+      gameState.lockedLevel = null;
+      render();
+      return;
+    }
+
+    return;
+  }
+
+  if (gameState.levelCards) {
+    for (const key in gameState.levelCards) {
+      const card = gameState.levelCards[key];
+      if (x >= card.x && x <= card.x + card.width && y >= card.y && y <= card.y + card.height) {
+        handleLevelClick(card.level);
+        return;
+      }
+    }
+  }
+}
+
+function handleMineTabClick(x, y) {
+  if (gameState.showGameStatsModal) {
+    if (gameState.statsModalCloseBtn && x >= gameState.statsModalCloseBtn.x && x <= gameState.statsModalCloseBtn.x + gameState.statsModalCloseBtn.width && y >= gameState.statsModalCloseBtn.y && y <= gameState.statsModalCloseBtn.y + gameState.statsModalCloseBtn.height) {
+      gameState.showGameStatsModal = false;
+      render();
       return;
     }
   }
-});
+
+  if (gameState.showGameGuideModal) {
+    if (gameState.guideModalCloseBtn && x >= gameState.guideModalCloseBtn.x && x <= gameState.guideModalCloseBtn.x + gameState.guideModalCloseBtn.width && y >= gameState.guideModalCloseBtn.y && y <= gameState.guideModalCloseBtn.y + gameState.guideModalCloseBtn.height) {
+      gameState.showGameGuideModal = false;
+      render();
+      return;
+    }
+  }
+
+  if (gameState.showSettingsModal) {
+    if (gameState.settingsModalCloseBtn && x >= gameState.settingsModalCloseBtn.x && x <= gameState.settingsModalCloseBtn.x + gameState.settingsModalCloseBtn.width && y >= gameState.settingsModalCloseBtn.y && y <= gameState.settingsModalCloseBtn.y + gameState.settingsModalCloseBtn.height) {
+      gameState.showSettingsModal = false;
+      render();
+      return;
+    }
+
+    if (gameState.soundToggleBtn && x >= gameState.soundToggleBtn.x && x <= gameState.soundToggleBtn.x + gameState.soundToggleBtn.width && y >= gameState.soundToggleBtn.y && y <= gameState.soundToggleBtn.y + gameState.soundToggleBtn.height) {
+      toggleSound();
+      render();
+      return;
+    }
+
+    if (gameState.musicToggleBtn && x >= gameState.musicToggleBtn.x && x <= gameState.musicToggleBtn.x + gameState.musicToggleBtn.width && y >= gameState.musicToggleBtn.y && y <= gameState.musicToggleBtn.y + gameState.musicToggleBtn.height) {
+      toggleMusic();
+      render();
+      return;
+    }
+
+    return;
+  }
+
+  if (gameState.menuButtons) {
+    for (const btn of gameState.menuButtons) {
+      if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
+        if (btn.action === 'stats') {
+          gameState.showGameStatsModal = true;
+        } else if (btn.action === 'guide') {
+          gameState.showGameGuideModal = true;
+        } else if (btn.action === 'settings') {
+          gameState.showSettingsModal = true;
+        }
+        render();
+        return;
+      }
+    }
+  }
+}
 
 wx.onShowShareAppMessage(function() {
-  console.log('=== onShareAppMessage 被调用 ===');
-  try {
-    const timestamp = Date.now();
-    console.log('保存分享状态:', timestamp);
-    wx.setStorageSync(SHARE_KEY, timestamp);
-    gameState.hasShared = true;
-    wx.showToast({
-      title: '分享成功！',
-      icon: 'success',
-      duration: 1000
-    });
-    
-    if (gameState.showLoseModal) {
-      setTimeout(() => {
-        handleLoseConfirm();
-      }, 500);
-    }
-  } catch (e) {
-    console.error('保存分享状态失败:', e);
-  }
   return {
-    title: '🐕 狗了个狗 - 超好玩的消除游戏！'
+    title: '狗了个狗 - 超好玩的狗狗消除游戏！',
+    imageUrl: ''
   };
 });
 
-console.log('=== Touch 事件绑定完成 ===');
-
-let shareCheckInterval = null;
-
-function checkShareStatus() {
+setInterval(() => {
   try {
     const shared = wx.getStorageSync(SHARE_KEY);
-    if (!!shared && !gameState.hasShared) {
+    if (shared && !gameState.hasShared) {
       gameState.hasShared = true;
+      wx.showToast({
+        title: '分享成功！',
+        icon: 'success',
+        duration: 1000
+      });
       render();
     }
   } catch (e) {
     console.error('检查分享状态失败:', e);
   }
-}
-
-setInterval(() => {
-  if (gameState.showLoseModal) {
-    checkShareStatus();
-  }
 }, 500);
 
-console.log('=== 分享状态轮询已启动 ===');
+initApp();
