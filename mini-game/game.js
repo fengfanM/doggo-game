@@ -36,6 +36,53 @@ const LEVELS = [
   { id: 4, name: '狗王挑战', difficulty: 'hard', description: '终极挑战！通关率<10%' },
 ];
 
+const STATS_KEY = 'dog_game_stats';
+const SHARE_KEY = 'dog_game_shared';
+
+function getGameStats() {
+  try {
+    return wx.getStorageSync(STATS_KEY) || {
+      highScore: 0,
+      totalWins: 0,
+      currentWinStreak: 0,
+      longestWinStreak: 0
+    };
+  } catch (e) {
+    return {
+      highScore: 0,
+      totalWins: 0,
+      currentWinStreak: 0,
+      longestWinStreak: 0
+    };
+  }
+}
+
+function saveGameStats(stats) {
+  try {
+    wx.setStorageSync(STATS_KEY, stats);
+  } catch (e) {
+    console.error('保存游戏统计失败:', e);
+  }
+}
+
+function completeLevel(level, time) {
+  try {
+    const key = `level_${level}_time`;
+    const current = wx.getStorageSync(key) || Infinity;
+    if (time < current) {
+      wx.setStorageSync(key, time);
+    }
+  } catch (e) {
+    console.error('保存关卡记录失败:', e);
+  }
+}
+
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 function generateId(len = 6) {
   const pool = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let res = '';
@@ -113,7 +160,7 @@ function generateCards(level) {
 
   let zIndex = 0;
   const centerX = Math.min(180, systemInfo.windowWidth / 2);
-  const centerY = Math.min(200, systemInfo.windowHeight / 2 - 50);
+  const centerY = Math.min(230, systemInfo.windowHeight / 2);
 
   for (let layer = 0; layer < config.layers; layer++) {
     const layerData = layerCards[layer];
@@ -199,7 +246,7 @@ function washCards(level, cards) {
 
   const config = levelConfig[Math.min(level - 1, levelConfig.length - 1)];
   const centerX = Math.min(180, systemInfo.windowWidth / 2);
-  const centerY = Math.min(200, systemInfo.windowHeight / 2 - 50);
+  const centerY = Math.min(230, systemInfo.windowHeight / 2);
 
   const cols = Math.ceil(Math.sqrt(shuffled.length * 1.5));
   const rows = Math.ceil(shuffled.length / cols);
@@ -228,26 +275,75 @@ function washCards(level, cards) {
 }
 
 function initGame(level = 1) {
-  const cards = generateCards(level);
+  const cards = checkCover(generateCards(level));
+  const gameStats = getGameStats();
+  
   gameState = {
     currentLevel: level,
     cards,
     queue: [],
     score: 0,
-    timeLeft: 300,
+    elapsedTime: 0,
     undoCount: 2,
     shuffleCount: 2,
-    isPaused: false,
-    isGameOver: false,
-    isWin: false,
+    failCount: 0,
+    hasShared: false,
+    gamePaused: false,
     showStartScreen: true,
+    showLoseModal: false,
+    showWinModal: false,
+    gameStats,
     history: []
   };
-  gameState.history.push({
-    cards: JSON.parse(JSON.stringify(cards)),
-    queue: [],
-    score: 0
-  });
+
+  try {
+    const shared = wx.getStorageSync(SHARE_KEY);
+    if (shared) {
+      gameState.hasShared = true;
+    }
+  } catch (e) {
+    console.error('检查分享状态失败:', e);
+  }
+
+  render();
+}
+
+function startGame(lvl = 1) {
+  if (gameState.timer) {
+    clearInterval(gameState.timer);
+  }
+
+  const newCards = checkCover(generateCards(lvl));
+  const gameStats = getGameStats();
+
+  gameState.cards = newCards;
+  gameState.queue = [];
+  gameState.score = 0;
+  gameState.currentLevel = lvl;
+  gameState.showStartScreen = false;
+  gameState.showLoseModal = false;
+  gameState.showWinModal = false;
+  gameState.undoCount = 2;
+  gameState.shuffleCount = 2;
+  gameState.elapsedTime = 0;
+  gameState.failCount = 0;
+  gameState.hasShared = false;
+  gameState.gameStats = gameStats;
+  gameState.history = [];
+
+  try {
+    wx.removeStorageSync(SHARE_KEY);
+  } catch (e) {
+    console.error('清除分享状态失败:', e);
+  }
+
+  gameState.timer = setInterval(() => {
+    if (!gameState.gamePaused && !gameState.showLoseModal && !gameState.showWinModal && !gameState.showStartScreen) {
+      gameState.elapsedTime++;
+      render();
+    }
+  }, 1000);
+
   render();
 }
 
@@ -267,24 +363,48 @@ function render() {
 
 function renderStartScreen() {
   ctx.fillStyle = '#FF9A3C';
-  ctx.font = 'bold 32px Arial, sans-serif';
+  ctx.font = 'bold 36px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🐶 狗了个狗', canvas.width / 2, canvas.height / 2 - 100);
+  ctx.fillText('🐕', canvas.width / 2, 80);
+  ctx.font = 'bold 28px Arial, sans-serif';
+  ctx.fillText('狗了个狗', canvas.width / 2, 120);
+
+  const stats = [
+    { value: gameState.gameStats.highScore, label: '最高分', x: canvas.width / 2 - 100 },
+    { value: gameState.gameStats.totalWins, label: '通关次数', x: canvas.width / 2 },
+    { value: gameState.gameStats.longestWinStreak, label: '最长连胜', x: canvas.width / 2 + 100 }
+  ];
+
+  stats.forEach(stat => {
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(ctx, stat.x - 40, 145, 80, 70, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#FF9A3C';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FF9A3C';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(stat.value), stat.x, 175);
+    ctx.font = '12px Arial, sans-serif';
+    ctx.fillText(stat.label, stat.x, 195);
+  });
 
   ctx.fillStyle = '#6B5B4F';
-  ctx.font = '24px Arial, sans-serif';
-  ctx.fillText(LEVELS[gameState.currentLevel - 1].name, canvas.width / 2, canvas.height / 2 - 50);
-
   ctx.font = '16px Arial, sans-serif';
-  ctx.fillText(LEVELS[gameState.currentLevel - 1].description, canvas.width / 2, canvas.height / 2 - 20);
+  ctx.textAlign = 'left';
+  const descY = 250;
+  ctx.fillText('1️⃣ 点击未被遮挡的卡牌', 40, descY);
+  ctx.fillText('2️⃣ 凑齐3张相同的就能消除', 40, descY + 30);
+  ctx.fillText('3️⃣ 卡槽满了就输了哦～', 40, descY + 60);
 
-  ctx.font = '14px Arial, sans-serif';
-  ctx.fillStyle = '#6B5B4F';
-  ctx.fillText('🔄 每局有2次洗牌机会', canvas.width / 2, canvas.height / 2 + 30);
-  ctx.fillText('↩️ 每局有2次撤回机会', canvas.width / 2, canvas.height / 2 + 55);
+  ctx.textAlign = 'center';
+  ctx.fillText('🔄 每局有2次洗牌机会', canvas.width / 2, descY + 100);
+  ctx.fillText('↩️ 每局有2次撤回机会', canvas.width / 2, descY + 125);
 
   const btnX = canvas.width / 2 - 100;
-  const btnY = canvas.height / 2 + 100;
+  const btnY = descY + 155;
   ctx.fillStyle = '#FF9A3C';
   ctx.strokeStyle = '#E88932';
   ctx.lineWidth = 2;
@@ -294,34 +414,64 @@ function renderStartScreen() {
 
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 20px Arial, sans-serif';
-  ctx.fillText('开始游戏', canvas.width / 2, btnY + 30);
+  ctx.fillText('🎮 开始游戏', canvas.width / 2, btnY + 30);
 
   gameState.startBtn = { x: btnX, y: btnY, width: 200, height: 50 };
 }
 
 function renderGameScreen() {
-  renderTitle();
+  renderHeader();
   renderCards();
   renderSlot();
-  renderInfo();
-  renderButtons();
+  renderControls();
 
-  if (gameState.isPaused) {
+  if (gameState.gamePaused) {
     renderPauseModal();
   }
-  if (gameState.isWin) {
-    renderWinModal();
-  }
-  if (gameState.isGameOver) {
+  if (gameState.showLoseModal) {
     renderLoseModal();
+  }
+  if (gameState.showWinModal) {
+    renderWinModal();
   }
 }
 
-function renderTitle() {
+function renderHeader() {
   ctx.fillStyle = '#FF9A3C';
-  ctx.font = 'bold 24px Arial, sans-serif';
+  ctx.font = 'bold 20px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🐶 狗了个狗', canvas.width / 2, 35);
+  ctx.fillText('🐕 狗了个狗 🐕', canvas.width / 2, 25);
+
+  const pauseBtnX = canvas.width - 50;
+  ctx.fillStyle = '#FF9A3C';
+  ctx.strokeStyle = '#E88932';
+  ctx.lineWidth = 2;
+  roundRect(ctx, pauseBtnX - 25, 10, 40, 35, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 18px Arial, sans-serif';
+  ctx.fillText(gameState.gamePaused ? '▶️' : '⏸️', pauseBtnX - 5, 32);
+
+  gameState.pauseBtn = { x: pauseBtnX - 25, y: 10, width: 40, height: 35 };
+
+  const stats = [
+    { label: '关卡', value: `${gameState.currentLevel}/4`, x: 40 },
+    { label: '剩余', value: String(gameState.cards.filter(c => c.status === 0).length), x: canvas.width / 2 - 40 },
+    { label: '得分', value: String(gameState.score), x: canvas.width / 2 + 60 },
+    { label: '用时', value: formatTime(gameState.elapsedTime), x: canvas.width - 60 }
+  ];
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = '12px Arial, sans-serif';
+  stats.forEach(stat => {
+    ctx.textAlign = 'center';
+    ctx.fillText(stat.label, stat.x, 55);
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText(stat.value, stat.x, 75);
+    ctx.font = '12px Arial, sans-serif';
+  });
 }
 
 function renderCards() {
@@ -350,7 +500,7 @@ function renderCards() {
 }
 
 function renderSlot() {
-  const slotY = canvas.height - 180;
+  const slotY = canvas.height - 200;
   const slotWidth = 70;
   const slotHeight = 90;
 
@@ -374,43 +524,33 @@ function renderSlot() {
   });
 }
 
-function renderInfo() {
-  const infoY = canvas.height - 220;
-  ctx.fillStyle = '#6B5B4F';
-  ctx.font = '18px Arial, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`得分: ${gameState.score}`, 20, infoY);
-  ctx.textAlign = 'right';
-  ctx.fillText(`⏱️ ${Math.floor(gameState.timeLeft / 60)}:${(gameState.timeLeft % 60).toString().padStart(2, '0')}`, canvas.width - 20, infoY);
-}
-
-function renderButtons() {
-  const btnY = canvas.height - 70;
-  const btnWidth = (canvas.width - 60) / 3;
+function renderControls() {
+  const btnY = canvas.height - 85;
+  const btnWidth = (canvas.width - 80) / 3;
 
   const buttons = [
-    { text: `🔄 洗牌 (${gameState.shuffleCount})`, x: 20, action: 'shuffle' },
-    { text: `↩️ 撤回 (${gameState.undoCount})`, x: 40 + btnWidth, action: 'undo' },
-    { text: '⏸️ 暂停', x: 60 + btnWidth * 2, action: 'pause' }
+    { text: `↩️ 撤回 (${gameState.undoCount})`, x: 20, action: 'undo', disabled: gameState.undoCount <= 0 },
+    { text: `🔄 洗牌 (${gameState.shuffleCount})`, x: 30 + btnWidth, action: 'shuffle', disabled: gameState.shuffleCount <= 0 },
+    { text: '🎯 重新开始', x: 40 + btnWidth * 2, action: 'restart', disabled: false }
   ];
 
-  gameState.actionButtons = [];
+  gameState.controlButtons = [];
 
   buttons.forEach(btn => {
-    ctx.fillStyle = '#FF9A3C';
-    ctx.strokeStyle = '#E88932';
+    ctx.fillStyle = btn.disabled ? '#CCCCCC' : '#FF9A3C';
+    ctx.strokeStyle = btn.disabled ? '#AAAAAA' : '#E88932';
     ctx.lineWidth = 2;
-    roundRect(ctx, btn.x, btnY, btnWidth, 50, 10);
+    roundRect(ctx, btn.x, btnY, btnWidth, 45, 10);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '14px Arial, sans-serif';
+    ctx.font = '13px Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(btn.text, btn.x + btnWidth / 2, btnY + 25);
+    ctx.fillText(btn.text, btn.x + btnWidth / 2, btnY + 22);
 
-    gameState.actionButtons.push({ ...btn, y: btnY, width: btnWidth, height: 50 });
+    gameState.controlButtons.push({ ...btn, y: btnY, width: btnWidth, height: 45 });
   });
 }
 
@@ -424,17 +564,17 @@ function renderPauseModal() {
   ctx.fillStyle = '#FFFFFF';
   ctx.strokeStyle = '#FF9A3C';
   ctx.lineWidth = 3;
-  roundRect(ctx, modalX, modalY, 280, 200, 15);
+  roundRect(ctx, modalX, modalY, 280, 150, 15);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#6B5B4F';
   ctx.font = 'bold 24px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('游戏暂停', canvas.width / 2, modalY + 50);
+  ctx.fillText('⏸️ 游戏暂停', canvas.width / 2, modalY + 50);
 
   const btn1X = canvas.width / 2 - 100;
-  const btn1Y = modalY + 90;
+  const btn1Y = modalY + 80;
   ctx.fillStyle = '#FF9A3C';
   ctx.strokeStyle = '#E88932';
   ctx.lineWidth = 2;
@@ -444,61 +584,9 @@ function renderPauseModal() {
 
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 18px Arial, sans-serif';
-  ctx.fillText('继续游戏', canvas.width / 2, btn1Y + 27);
+  ctx.fillText('▶️ 继续游戏', canvas.width / 2, btn1Y + 27);
 
-  gameState.pauseBtn = { x: btn1X, y: btn1Y, width: 200, height: 45 };
-}
-
-function renderWinModal() {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const modalX = canvas.width / 2 - 140;
-  const modalY = canvas.height / 2 - 120;
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.strokeStyle = '#FF9A3C';
-  ctx.lineWidth = 3;
-  roundRect(ctx, modalX, modalY, 280, 240, 15);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#6B5B4F';
-  ctx.font = 'bold 28px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('🎉 恭喜通关！', canvas.width / 2, modalY + 50);
-
-  ctx.font = '20px Arial, sans-serif';
-  ctx.fillText(`得分: ${gameState.score}`, canvas.width / 2, modalY + 85);
-
-  const btn1X = canvas.width / 2 - 100;
-  const btn1Y = modalY + 110;
-  ctx.fillStyle = '#FF9A3C';
-  ctx.strokeStyle = '#E88932';
-  ctx.lineWidth = 2;
-  roundRect(ctx, btn1X, btn1Y, 200, 45, 10);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 18px Arial, sans-serif';
-  ctx.fillText('下一关', canvas.width / 2, btn1Y + 27);
-
-  const btn2X = canvas.width / 2 - 100;
-  const btn2Y = modalY + 165;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.strokeStyle = '#FF9A3C';
-  ctx.lineWidth = 2;
-  roundRect(ctx, btn2X, btn2Y, 200, 45, 10);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#FF9A3C';
-  ctx.font = 'bold 18px Arial, sans-serif';
-  ctx.fillText('再玩一次', canvas.width / 2, btn2Y + 27);
-
-  gameState.winBtn1 = { x: btn1X, y: btn1Y, width: 200, height: 45 };
-  gameState.winBtn2 = { x: btn2X, y: btn2Y, width: 200, height: 45 };
+  gameState.pauseContinueBtn = { x: btn1X, y: btn1Y, width: 200, height: 45 };
 }
 
 function renderLoseModal() {
@@ -506,51 +594,155 @@ function renderLoseModal() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const modalX = canvas.width / 2 - 140;
-  const modalY = canvas.height / 2 - 120;
+  const modalY = canvas.height / 2 - 140;
 
   ctx.fillStyle = '#FFFFFF';
   ctx.strokeStyle = '#FF6B6B';
   ctx.lineWidth = 3;
-  roundRect(ctx, modalX, modalY, 280, 240, 15);
+  roundRect(ctx, modalX, modalY, 280, 280, 15);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#6B5B4F';
-  ctx.font = 'bold 28px Arial, sans-serif';
+  ctx.font = 'bold 24px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('😢 挑战失败', canvas.width / 2, modalY + 50);
+  ctx.fillText('😢 游戏结束', canvas.width / 2, modalY + 50);
 
-  ctx.font = '20px Arial, sans-serif';
-  ctx.fillText(`得分: ${gameState.score}`, canvas.width / 2, modalY + 85);
+  ctx.font = '16px Arial, sans-serif';
+  ctx.fillText('卡槽满了，再试一次吧！', canvas.width / 2, modalY + 80);
 
-  const btn1X = canvas.width / 2 - 100;
-  const btn1Y = modalY + 110;
+  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
+
+  if (needShare) {
+    const shareBtnX = canvas.width / 2 - 100;
+    const shareBtnY = modalY + 110;
+    ctx.fillStyle = '#FF9A3C';
+    ctx.strokeStyle = '#E88932';
+    ctx.lineWidth = 2;
+    roundRect(ctx, shareBtnX, shareBtnY, 200, 45, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('📤 分享到微信群', canvas.width / 2, shareBtnY + 27);
+
+    gameState.loseShareBtn = { x: shareBtnX, y: shareBtnY, width: 200, height: 45 };
+
+    const homeBtnX = canvas.width / 2 - 100;
+    const homeBtnY = modalY + 165;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#FF9A3C';
+    ctx.lineWidth = 2;
+    roundRect(ctx, homeBtnX, homeBtnY, 200, 45, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#FF9A3C';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('🏠 返回首页', canvas.width / 2, homeBtnY + 27);
+
+    gameState.loseHomeBtn = { x: homeBtnX, y: homeBtnY, width: 200, height: 45 };
+  } else {
+    const restartBtnX = canvas.width / 2 - 100;
+    const restartBtnY = modalY + 110;
+    ctx.fillStyle = '#FF9A3C';
+    ctx.strokeStyle = '#E88932';
+    ctx.lineWidth = 2;
+    roundRect(ctx, restartBtnX, restartBtnY, 200, 45, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('🔄 重新开始', canvas.width / 2, restartBtnY + 27);
+
+    gameState.loseRestartBtn = { x: restartBtnX, y: restartBtnY, width: 200, height: 45 };
+
+    const homeBtnX = canvas.width / 2 - 100;
+    const homeBtnY = modalY + 165;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#FF9A3C';
+    ctx.lineWidth = 2;
+    roundRect(ctx, homeBtnX, homeBtnY, 200, 45, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#FF9A3C';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('🏠 返回首页', canvas.width / 2, homeBtnY + 27);
+
+    gameState.loseHomeBtn = { x: homeBtnX, y: homeBtnY, width: 200, height: 45 };
+  }
+}
+
+function renderWinModal() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const modalX = canvas.width / 2 - 140;
+  const modalY = canvas.height / 2 - 150;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#FF9A3C';
+  ctx.lineWidth = 3;
+  roundRect(ctx, modalX, modalY, 280, 300, 15);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#6B5B4F';
+  ctx.font = 'bold 24px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🎉 恭喜过关！', canvas.width / 2, modalY + 50);
+
+  ctx.font = '14px Arial, sans-serif';
+  ctx.fillText('本次用时', canvas.width / 2 - 70, modalY + 85);
+  ctx.fillText('得分', canvas.width / 2 + 70, modalY + 85);
+
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.fillText(formatTime(gameState.elapsedTime), canvas.width / 2 - 70, modalY + 110);
+  ctx.fillText(String(gameState.score), canvas.width / 2 + 70, modalY + 110);
+
+  ctx.font = '14px Arial, sans-serif';
+  if (gameState.currentLevel >= 4) {
+    ctx.fillText('你太厉害了！已通关所有关卡！', canvas.width / 2, modalY + 150);
+  } else {
+    ctx.fillText(`准备好挑战第 ${gameState.currentLevel + 1} 关了吗？`, canvas.width / 2, modalY + 150);
+  }
+
+  const nextBtnX = canvas.width / 2 - 100;
+  const nextBtnY = modalY + 175;
   ctx.fillStyle = '#FF9A3C';
   ctx.strokeStyle = '#E88932';
   ctx.lineWidth = 2;
-  roundRect(ctx, btn1X, btn1Y, 200, 45, 10);
+  roundRect(ctx, nextBtnX, nextBtnY, 200, 45, 10);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 18px Arial, sans-serif';
-  ctx.fillText('再试一次', canvas.width / 2, btn1Y + 27);
+  ctx.font = 'bold 16px Arial, sans-serif';
+  if (gameState.currentLevel >= 4) {
+    ctx.fillText('🔄 再玩一次', canvas.width / 2, nextBtnY + 27);
+  } else {
+    ctx.fillText('➡️ 下一关', canvas.width / 2, nextBtnY + 27);
+  }
 
-  const btn2X = canvas.width / 2 - 100;
-  const btn2Y = modalY + 165;
+  gameState.winNextBtn = { x: nextBtnX, y: nextBtnY, width: 200, height: 45 };
+
+  const homeBtnX = canvas.width / 2 - 100;
+  const homeBtnY = modalY + 230;
   ctx.fillStyle = '#FFFFFF';
   ctx.strokeStyle = '#FF9A3C';
   ctx.lineWidth = 2;
-  roundRect(ctx, btn2X, btn2Y, 200, 45, 10);
+  roundRect(ctx, homeBtnX, homeBtnY, 200, 45, 10);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#FF9A3C';
-  ctx.font = 'bold 18px Arial, sans-serif';
-  ctx.fillText('分享给好友', canvas.width / 2, btn2Y + 27);
+  ctx.font = 'bold 16px Arial, sans-serif';
+  ctx.fillText('🏠 返回首页', canvas.width / 2, homeBtnY + 27);
 
-  gameState.loseBtn1 = { x: btn1X, y: btn1Y, width: 200, height: 45 };
-  gameState.loseBtn2 = { x: btn2X, y: btn2Y, width: 200, height: 45 };
+  gameState.winHomeBtn = { x: homeBtnX, y: homeBtnY, width: 200, height: 45 };
 }
 
 function roundRect(ctx, x, y, width, height, radius) {
@@ -580,73 +772,92 @@ function handleClick(x, y) {
     if (gameState.startBtn &&
         x >= gameState.startBtn.x && x <= gameState.startBtn.x + gameState.startBtn.width &&
         y >= gameState.startBtn.y && y <= gameState.startBtn.y + gameState.startBtn.height) {
-      gameState.showStartScreen = false;
-      startTimer();
+      startGame(1);
+    }
+    return;
+  }
+
+  if (gameState.pauseBtn &&
+      x >= gameState.pauseBtn.x && x <= gameState.pauseBtn.x + gameState.pauseBtn.width &&
+      y >= gameState.pauseBtn.y && y <= gameState.pauseBtn.y + gameState.pauseBtn.height) {
+    if (!gameState.showLoseModal && !gameState.showWinModal) {
+      gameState.gamePaused = !gameState.gamePaused;
       render();
     }
     return;
   }
 
-  if (gameState.isPaused) {
-    if (gameState.pauseBtn &&
-        x >= gameState.pauseBtn.x && x <= gameState.pauseBtn.x + gameState.pauseBtn.width &&
-        y >= gameState.pauseBtn.y && y <= gameState.pauseBtn.y + gameState.pauseBtn.height) {
-      gameState.isPaused = false;
+  if (gameState.gamePaused && gameState.pauseContinueBtn) {
+    if (x >= gameState.pauseContinueBtn.x && x <= gameState.pauseContinueBtn.x + gameState.pauseContinueBtn.width &&
+        y >= gameState.pauseContinueBtn.y && y <= gameState.pauseContinueBtn.y + gameState.pauseContinueBtn.height) {
+      gameState.gamePaused = false;
       render();
-    }
-    return;
-  }
-
-  if (gameState.isWin) {
-    if (gameState.winBtn1 &&
-        x >= gameState.winBtn1.x && x <= gameState.winBtn1.x + gameState.winBtn1.width &&
-        y >= gameState.winBtn1.y && y <= gameState.winBtn1.y + gameState.winBtn1.height) {
-      const nextLevel = Math.min(gameState.currentLevel + 1, 4);
-      clearInterval(gameState.timer);
-      initGame(nextLevel);
-      gameState.showStartScreen = false;
-      startTimer();
       return;
     }
-    if (gameState.winBtn2 &&
-        x >= gameState.winBtn2.x && x <= gameState.winBtn2.x + gameState.winBtn2.width &&
-        y >= gameState.winBtn2.y && y <= gameState.winBtn2.y + gameState.winBtn2.height) {
-      clearInterval(gameState.timer);
+  }
+
+  if (gameState.showLoseModal) {
+    if (gameState.loseRestartBtn &&
+        x >= gameState.loseRestartBtn.x && x <= gameState.loseRestartBtn.x + gameState.loseRestartBtn.width &&
+        y >= gameState.loseRestartBtn.y && y <= gameState.loseRestartBtn.y + gameState.loseRestartBtn.height) {
+      handleLoseConfirm();
+      return;
+    }
+    if (gameState.loseShareBtn) {
+      if (x >= gameState.loseShareBtn.x && x <= gameState.loseShareBtn.x + gameState.loseShareBtn.width &&
+          y >= gameState.loseShareBtn.y && y <= gameState.loseShareBtn.y + gameState.loseShareBtn.height) {
+        wx.showShareMenu({ withShareTicket: true });
+        try {
+          wx.setStorageSync(SHARE_KEY, Date.now());
+          gameState.hasShared = true;
+          render();
+        } catch (e) {
+          console.error('保存分享状态失败:', e);
+        }
+        return;
+      }
+    }
+    if (gameState.loseHomeBtn &&
+        x >= gameState.loseHomeBtn.x && x <= gameState.loseHomeBtn.x + gameState.loseHomeBtn.width &&
+        y >= gameState.loseHomeBtn.y && y <= gameState.loseHomeBtn.y + gameState.loseHomeBtn.height) {
+      if (gameState.timer) clearInterval(gameState.timer);
       initGame(gameState.currentLevel);
-      gameState.showStartScreen = false;
-      startTimer();
       return;
     }
     return;
   }
 
-  if (gameState.isGameOver) {
-    if (gameState.loseBtn1 &&
-        x >= gameState.loseBtn1.x && x <= gameState.loseBtn1.x + gameState.loseBtn1.width &&
-        y >= gameState.loseBtn1.y && y <= gameState.loseBtn1.y + gameState.loseBtn1.height) {
-      clearInterval(gameState.timer);
+  if (gameState.showWinModal) {
+    if (gameState.winNextBtn &&
+        x >= gameState.winNextBtn.x && x <= gameState.winNextBtn.x + gameState.winNextBtn.width &&
+        y >= gameState.winNextBtn.y && y <= gameState.winNextBtn.y + gameState.winNextBtn.height) {
+      if (gameState.currentLevel >= 4) {
+        startGame(1);
+      } else {
+        startGame(gameState.currentLevel + 1);
+      }
+      return;
+    }
+    if (gameState.winHomeBtn &&
+        x >= gameState.winHomeBtn.x && x <= gameState.winHomeBtn.x + gameState.winHomeBtn.width &&
+        y >= gameState.winHomeBtn.y && y <= gameState.winHomeBtn.y + gameState.winHomeBtn.height) {
+      if (gameState.timer) clearInterval(gameState.timer);
       initGame(gameState.currentLevel);
-      gameState.showStartScreen = false;
-      startTimer();
-      return;
-    }
-    if (gameState.loseBtn2) {
       return;
     }
     return;
   }
 
-  if (gameState.actionButtons) {
-    for (const btn of gameState.actionButtons) {
+  if (gameState.controlButtons) {
+    for (const btn of gameState.controlButtons) {
       if (x >= btn.x && x <= btn.x + btn.width &&
           y >= btn.y && y <= btn.y + btn.height) {
-        if (btn.action === 'shuffle') {
-          shuffle();
-        } else if (btn.action === 'undo') {
-          undo();
-        } else if (btn.action === 'pause') {
-          gameState.isPaused = true;
-          render();
+        if (btn.action === 'undo' && !btn.disabled) {
+          handleUndo();
+        } else if (btn.action === 'shuffle' && !btn.disabled) {
+          handleShuffle();
+        } else if (btn.action === 'restart') {
+          handleRestart();
         }
         return;
       }
@@ -669,83 +880,144 @@ function handleClick(x, y) {
 function handleCardClick(card) {
   gameState.history.push({
     cards: JSON.parse(JSON.stringify(gameState.cards)),
-    queue: [...gameState.queue],
+    queue: JSON.parse(JSON.stringify(gameState.queue)),
     score: gameState.score
   });
-  if (gameState.history.length > 10) gameState.history.shift();
 
-  card.status = 1;
-  gameState.queue.push(card);
-  gameState.score += 10;
-  checkMatches();
-  checkCover(gameState.cards);
-
-  if (gameState.queue.length === 7) {
-    gameState.isGameOver = true;
-    clearInterval(gameState.timer);
+  if (gameState.history.length > 10) {
+    gameState.history.shift();
   }
 
-  if (gameState.cards.every(c => c.status === 2)) {
-    gameState.isWin = true;
-    clearInterval(gameState.timer);
-  }
+  const updateScene = gameState.cards.slice();
+  const symbol = updateScene.find(c => c.id === card.id);
+  symbol.status = 1;
 
-  render();
-}
+  let updateQueue = gameState.queue.slice();
+  updateQueue.push(symbol);
 
-function checkMatches() {
-  const counts = {};
-  gameState.queue.forEach(card => {
-    counts[card.type] = (counts[card.type] || 0) + 1;
+  let newScore = gameState.score + 10;
+  const checkedCards = checkCover(updateScene);
+  gameState.cards = checkedCards;
+  gameState.queue = updateQueue;
+  gameState.score = newScore;
+
+  const typeCounts = {};
+  updateQueue.forEach(card => {
+    typeCounts[card.type] = (typeCounts[card.type] || 0) + 1;
   });
 
-  Object.entries(counts).forEach(([type, count]) => {
-    if (count >= 3) {
-      for (let i = 0; i < Math.floor(count / 3); i++) {
-        let removed = 0;
-        gameState.queue = gameState.queue.filter(card => {
-          if (card.type === type && removed < 3) {
-            removed++;
-            card.status = 2;
-            return false;
+  const typesToRemove = Object.keys(typeCounts).filter(type => typeCounts[type] >= 3);
+
+  if (typesToRemove.length > 0) {
+    typesToRemove.forEach(type => {
+      let removed = 0;
+      updateQueue = updateQueue.filter(card => {
+        if (card.type === type && removed < 3) {
+          removed++;
+          const find = updateScene.find(i => i.id === card.id);
+          if (find) {
+            find.status = 2;
           }
-          return true;
-        });
-        gameState.score += 3;
-      }
-    }
-  });
-}
+          return false;
+        }
+        return true;
+      });
+    });
 
-function shuffle() {
-  if (gameState.shuffleCount <= 0) return;
-  gameState.shuffleCount--;
-  gameState.cards = washCards(gameState.currentLevel, gameState.cards);
+    newScore += 100 * typesToRemove.length;
+    gameState.score = newScore;
+  }
+
+  gameState.queue = updateQueue;
+  const finalCheckedCards = checkCover(updateScene);
+  gameState.cards = finalCheckedCards;
+
+  if (updateQueue.length === 7) {
+    gameState.showLoseModal = true;
+    if (gameState.timer) {
+      clearInterval(gameState.timer);
+    }
+  }
+
+  const winCheck = !finalCheckedCards.find(s => s.status !== 2);
+  if (winCheck) {
+    gameState.showWinModal = true;
+    const newStats = { ...gameState.gameStats };
+    newStats.highScore = Math.max(newStats.highScore, newScore);
+    newStats.totalWins += 1;
+    newStats.currentWinStreak += 1;
+    newStats.longestWinStreak = Math.max(newStats.longestWinStreak, newStats.currentWinStreak);
+    saveGameStats(newStats);
+    gameState.gameStats = newStats;
+    completeLevel(gameState.currentLevel, gameState.elapsedTime);
+    if (gameState.timer) {
+      clearInterval(gameState.timer);
+    }
+  }
+
   render();
 }
 
-function undo() {
-  if (gameState.undoCount <= 0 || gameState.history.length <= 1) return;
+function handleUndo() {
+  if (gameState.history.length === 0) return;
+  const lastState = gameState.history.pop();
+  gameState.cards = lastState.cards;
+  gameState.queue = lastState.queue;
+  gameState.score = lastState.score;
   gameState.undoCount--;
-  gameState.history.pop();
-  const last = gameState.history[gameState.history.length - 1];
-  gameState.cards = JSON.parse(JSON.stringify(last.cards));
-  gameState.queue = [...last.queue];
-  gameState.score = last.score;
   render();
 }
 
-function startTimer() {
-  gameState.timer = setInterval(() => {
-    if (!gameState.isPaused && !gameState.isGameOver && !gameState.isWin && !gameState.showStartScreen) {
-      gameState.timeLeft--;
-      if (gameState.timeLeft <= 0) {
-        gameState.isGameOver = true;
-        clearInterval(gameState.timer);
-      }
-      render();
+function handleShuffle() {
+  const washedCards = washCards(gameState.currentLevel, gameState.cards);
+  gameState.cards = washedCards;
+  gameState.shuffleCount--;
+  render();
+}
+
+function handleRestart() {
+  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
+  if (needShare) {
+    wx.showToast({
+      title: '请先分享到微信群！',
+      icon: 'none',
+      duration: 2000
+    });
+    return;
+  }
+  startGame(gameState.currentLevel);
+}
+
+function handleLoseConfirm() {
+  const needShare = gameState.failCount >= 1 && !gameState.hasShared;
+  if (needShare) {
+    wx.showToast({
+      title: '请先分享到微信群！',
+      icon: 'none',
+      duration: 2000
+    });
+    return;
+  }
+
+  const newFailCount = gameState.failCount + 1;
+  gameState.failCount = newFailCount;
+
+  if (gameState.hasShared) {
+    try {
+      wx.removeStorageSync(SHARE_KEY);
+      gameState.hasShared = false;
+    } catch (e) {
+      console.error('清除分享状态失败:', e);
     }
-  }, 1000);
+  }
+
+  const newStats = { ...gameState.gameStats };
+  newStats.currentWinStreak = 0;
+  saveGameStats(newStats);
+  gameState.gameStats = newStats;
+
+  startGame(gameState.currentLevel);
+  gameState.failCount = newFailCount;
 }
 
 initGame(1);
